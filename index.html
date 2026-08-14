@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS383 — Data Science and Machine Learning</title>
+<style>
+  :root {
+    --bg: #F5F6F8;
+    --ink: #12141A;
+    --ink-soft: #565C6B;
+    --line: #DBDEE4;
+    --navy: #0039A6;
+    --gold: #EE352E;
+    --card-bg: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  h1, h2, h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  a { color: var(--navy); }
+
+  /* ---------- Header ---------- */
+  header {
+    padding: 56px 0 0;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+
+  h1.title {
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.12;
+    margin: 14px 0 16px;
+  }
+
+  .tagline {
+    font-size: 19px;
+    color: var(--ink-soft);
+    max-width: 620px;
+    margin: 0 0 28px;
+  }
+
+  .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 26px;
+    padding: 20px 0 40px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 48px;
+  }
+
+  .stat {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stat::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ---------- Section shell ---------- */
+  section { padding: 0 0 56px; }
+
+  .section-label {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  h2.section-title {
+    font-size: 27px;
+    margin-bottom: 30px;
+  }
+
+  /* ---------- Why this course ---------- */
+  .why-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px 40px;
+  }
+
+  .why-item .num {
+    font-family: Georgia, serif;
+    font-size: 14px;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .why-item h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .why-item p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+
+  /* ---------- Outcomes ---------- */
+  .outcomes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 32px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .outcomes li {
+    font-size: 15.5px;
+    padding-left: 22px;
+    position: relative;
+    color: var(--ink);
+  }
+
+  .outcomes li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--navy);
+  }
+
+  /* ---------- Roadmap ---------- */
+  .phase {
+    margin-bottom: 30px;
+  }
+
+  .phase-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--navy);
+    font-weight: 700;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .week-row {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--line);
+  }
+
+  .week-row:last-child { border-bottom: none; }
+
+  .week-num {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    color: var(--ink-soft);
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  .week-body { flex: 1; }
+
+  .week-title {
+    font-weight: 600;
+    font-size: 15.5px;
+  }
+
+  .week-tags {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .week-flag {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  /* ---------- Assignments ---------- */
+  .deliverables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+
+  .deliverable-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    padding: 18px 16px;
+  }
+
+  .deliverable-card .tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .deliverable-card p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink);
+  }
+
+  /* ---------- Tools ---------- */
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .tool-pill {
+    border: 1px solid var(--line);
+    background: var(--card-bg);
+    padding: 7px 14px;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+
+  /* ---------- Footer / CTA ---------- */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 44px 0 60px;
+  }
+
+  .cta-sub {
+    color: var(--ink-soft);
+    font-size: 15.5px;
+    max-width: 560px;
+    margin-bottom: 18px;
+  }
+
+  .cta-sub a {
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  .footer-meta {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 640px) {
+    .why-grid, .outcomes { grid-template-columns: 1fr; }
+    .week-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">CS383 · York College, CUNY</div>
+    <h1 class="title">Data Science and<br>Machine Learning</h1>
+    <p class="tagline">Learn Python, SQL, and machine learning by building on real, live New York City data — not toy datasets.</p>
+    <div class="stat-row">
+      <div class="stat">15 weeks</div>
+      <div class="stat">Real, live NYC Open Data every week</div>
+      <div class="stat">Industry guest speaker</div>
+      <div class="stat">Capstone project</div>
+    </div>
+  </header>
+
+  <section id="why">
+    <div class="section-label">Why This Course</div>
+    <h2 class="section-title">Built on the data, tools, and habits the job actually requires</h2>
+    <div class="why-grid">
+      <div class="why-item">
+        <div class="num">01</div>
+        <h3>Real data, not toy data</h3>
+        <p>Every lecture pulls live data straight from NYC's own open data platform — the same kind of messy, real-world data you'll work with on the job.</p>
+      </div>
+      <div class="why-item">
+        <div class="num">02</div>
+        <h3>A portfolio, not just grades</h3>
+        <p>Every assignment is a real deliverable — a cleaned dataset, an EDA report, a trained model, a bias audit — the kind of work you can show an employer.</p>
+      </div>
+      <div class="why-item">
+        <div class="num">03</div>
+        <h3>Two languages, one skillset</h3>
+        <p>Learn SQL and Pandas side by side, the way working data teams actually move between the two.</p>
+      </div>
+      <div class="why-item">
+        <div class="num">04</div>
+        <h3>Code to neural networks</h3>
+        <p>Start with Python fundamentals in week 2. By week 13, you're training neural networks and calling pretrained models from Hugging Face.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="outcomes">
+    <div class="section-label">Learning Objectives</div>
+    <h2 class="section-title">By the end of the semester, you'll be able to</h2>
+    <ul class="outcomes">
+      <li>Explain the ML workflow and the difference between supervised and unsupervised learning</li>
+      <li>Write vectorized NumPy code instead of slow Python loops</li>
+      <li>Query databases with SQL and manipulate DataFrames with Pandas — SELECT, WHERE, GROUP BY, joins</li>
+      <li>Handle datetimes, reshape data, and clean real-world data across multiple sources</li>
+      <li>Explore distributions, outliers, and correlation, and visualize findings with Matplotlib and Seaborn</li>
+      <li>Engineer features — scaling, encoding categoricals, avoiding data leakage</li>
+      <li>Build linear and logistic regression models with Ridge/Lasso regularization</li>
+      <li>Train classifiers and evaluate them with precision, recall, F1, and ROC/AUC</li>
+      <li>Use decision trees, random forests, and XGBoost, and interpret feature importance</li>
+      <li>Build scikit-learn pipelines with cross-validation and hyperparameter tuning</li>
+      <li>Apply k-Means clustering and PCA to find structure in unlabeled data</li>
+      <li>Train a neural network and apply transfer learning with Hugging Face</li>
+      <li>Run a bias audit and communicate fairness metrics in a model card</li>
+    </ul>
+  </section>
+
+  <section id="roadmap">
+    <div class="section-label">Course Roadmap</div>
+    <h2 class="section-title">15 weeks, four stages</h2>
+
+    <div class="phase">
+      <div class="phase-title">Foundations</div>
+      <div class="week-row">
+        <div class="week-num">01</div>
+        <div class="week-body">
+          <div class="week-title">Introduction to Data Science &amp; ML</div>
+          <div class="week-tags">the ML workflow · supervised vs. unsupervised learning · types of data</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">02</div>
+        <div class="week-body">
+          <div class="week-title">Python &amp; NumPy Foundations</div>
+          <div class="week-tags">Python refresher · NumPy · vectorized computing</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-title">Working With Real Data</div>
+      <div class="week-row">
+        <div class="week-num">03</div>
+        <div class="week-body">
+          <div class="week-title">SQL &amp; Pandas Fundamentals</div>
+          <div class="week-tags">DataFrames vs. tables · SELECT, WHERE, GROUP BY &amp; ORDER BY</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">04</div>
+        <div class="week-body">
+          <div class="week-title">Joins, Cleaning &amp; Real-World Data</div>
+          <div class="week-tags">joins &amp; reshaping · datetime handling · real-world data cleaning</div>
+        </div>
+        <div class="week-flag">Assignment 1</div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">05</div>
+        <div class="week-body">
+          <div class="week-title">Exploratory Data Analysis &amp; Visualization</div>
+          <div class="week-tags">descriptive statistics · distributions &amp; outliers · technical storytelling</div>
+        </div>
+        <div class="week-flag">Assignment 2</div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">06</div>
+        <div class="week-body">
+          <div class="week-title">Feature Engineering</div>
+          <div class="week-tags">scaling &amp; encoding categoricals · avoiding data leakage</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-title">Machine Learning</div>
+      <div class="week-row">
+        <div class="week-num">07</div>
+        <div class="week-body">
+          <div class="week-title">Regression</div>
+          <div class="week-tags">linear &amp; logistic regression · regularization (Ridge/Lasso) · bias-variance</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">08</div>
+        <div class="week-body">
+          <div class="week-title">Classification</div>
+          <div class="week-tags">k-NN &amp; decision boundaries · industry guest speaker</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">09</div>
+        <div class="week-body">
+          <div class="week-title">Evaluation Metrics</div>
+          <div class="week-tags">confusion matrix · precision, recall, F1, ROC/AUC</div>
+        </div>
+        <div class="week-flag">Assignment 3</div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">10</div>
+        <div class="week-body">
+          <div class="week-title">Trees, Forests &amp; XGBoost</div>
+          <div class="week-tags">decision trees, random forests &amp; XGBoost · feature importance</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">11</div>
+        <div class="week-body">
+          <div class="week-title">ML Pipelines &amp; Model Tuning</div>
+          <div class="week-tags">cross-validation · hyperparameter tuning · scikit-learn Pipelines</div>
+        </div>
+        <div class="week-flag">Midterm</div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">12</div>
+        <div class="week-body">
+          <div class="week-title">Unsupervised Learning</div>
+          <div class="week-tags">clustering · PCA</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-title">Deep Learning &amp; Responsible AI</div>
+      <div class="week-row">
+        <div class="week-num">13</div>
+        <div class="week-body">
+          <div class="week-title">Neural Networks</div>
+          <div class="week-tags">perceptrons, MLPs &amp; backpropagation · transfer learning with Hugging Face</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">14</div>
+        <div class="week-body">
+          <div class="week-title">Ethics, Fairness &amp; Responsible AI</div>
+          <div class="week-tags">bias audits, disparate impact &amp; fairness metrics · model cards</div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-num">15</div>
+        <div class="week-body">
+          <div class="week-title">Capstone Presentations</div>
+          <div class="week-tags">present your work</div>
+        </div>
+        <div class="week-flag">Final Project</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="deliverables">
+    <div class="section-label">A Glimpse of the Work</div>
+    <h2 class="section-title">What you'll actually build</h2>
+    <div class="deliverables">
+      <div class="deliverable-card">
+        <span class="tag">Assignment 1</span>
+        <p>Join and clean real restaurant inspection data from three linked tables.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Assignment 2</span>
+        <p>An EDA &amp; visualization report written for a non-technical audience.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Assignment 3</span>
+        <p>Compare classification models on a fraud or churn dataset.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Midterm</span>
+        <p>An end-to-end ML pipeline, built on a real dataset.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Capstone</span>
+        <p>A full project with a bias audit, model card, and live presentation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tools">
+    <div class="section-label">Tools You'll Use</div>
+    <div class="tools">
+      <span class="tool-pill">Python</span>
+      <span class="tool-pill">NumPy</span>
+      <span class="tool-pill">Pandas</span>
+      <span class="tool-pill">SQL</span>
+      <span class="tool-pill">scikit-learn</span>
+      <span class="tool-pill">XGBoost</span>
+      <span class="tool-pill">PyTorch</span>
+      <span class="tool-pill">Hugging Face</span>
+      <span class="tool-pill">Git / GitHub</span>
+    </div>
+  </section>
+
+  <footer>
+    <p class="cta-sub">If you have any questions or want to check prerequisite requirements, please email Dr. Thitima Srivatanakul at <a href="mailto:tsrivatanakul@york.cuny.edu">tsrivatanakul@york.cuny.edu</a>.</p>
+    <div class="footer-meta">Dr. Thitima Srivatanakul · York College, CUNY · Fall 2026<br>Topics and schedule are subject to change.</div>
+  </footer>
+
+</div>
+
+</body>
+</html>
