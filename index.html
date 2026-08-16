@@ -13,6 +13,8 @@
     --navy: #0039A6;
     --gold: #EE352E;
     --card-bg: #FFFFFF;
+    --code-bg: #1B1E27;
+    --code-ink: #E4E6EB;
   }
 
   * { box-sizing: border-box; }
@@ -42,6 +44,14 @@
   }
 
   a { color: var(--navy); }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    background: #EDEEF2;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+  }
 
   /* ---------- Header ---------- */
   header {
@@ -109,32 +119,139 @@
 
   h2.section-title {
     font-size: 27px;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
+    line-height: 1.3;
   }
 
-  /* ---------- Why this course ---------- */
-  .why-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 30px 40px;
-  }
-
-  .why-item .num {
-    font-family: Georgia, serif;
-    font-size: 14px;
-    color: var(--gold);
-    margin-bottom: 6px;
-  }
-
-  .why-item h3 {
-    font-size: 18px;
-    margin-bottom: 6px;
-  }
-
-  .why-item p {
-    margin: 0;
+  /* ---------- Hook / code demo ---------- */
+  .hook-lead {
+    font-size: 16.5px;
     color: var(--ink-soft);
+    margin: 0 0 20px;
+  }
+
+  .code-card {
+    background: var(--code-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 26px;
+  }
+
+  .code-card-bar {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .code-card-bar .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+  }
+
+  .code-card pre {
+    margin: 0;
+    padding: 22px 24px 26px;
+    overflow-x: auto;
+  }
+
+  .code-card code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--code-ink);
+  }
+
+  .tok-kw { color: #6FB3FF; }
+  .tok-fn { color: #FFD479; }
+  .tok-cm { color: #7C8299; font-style: italic; }
+
+  .hook-followup {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+
+  .hook-questions {
+    list-style: none;
+    margin: 0 0 24px;
+    padding: 0;
+  }
+
+  .hook-questions li {
     font-size: 15px;
+    padding: 10px 0 10px 22px;
+    position: relative;
+    border-bottom: 1px dotted var(--line);
+    color: var(--ink);
+  }
+
+  .hook-questions li:last-child { border-bottom: none; }
+
+  .hook-questions li::before {
+    content: "?";
+    position: absolute;
+    left: 0;
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .hook-close {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  /* ---------- Real data vs. toy data ---------- */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 22px;
+  }
+
+  .compare-col {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--line);
+    padding: 20px 20px 6px;
+  }
+
+  .compare-real { border-top-color: var(--navy); }
+
+  .compare-heading {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+  }
+
+  .compare-real .compare-heading { color: var(--navy); }
+
+  .compare-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .compare-list li {
+    font-size: 14px;
+    color: var(--ink);
+    padding-bottom: 16px;
+  }
+
+  .compare-list strong { font-weight: 600; }
+
+  .compare-why {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    margin: 0;
   }
 
   /* ---------- Outcomes ---------- */
@@ -159,6 +276,50 @@
     position: absolute;
     left: 0;
     color: var(--navy);
+  }
+
+  /* ---------- Assignments ---------- */
+  .deliverables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+
+  .deliverable-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    padding: 18px 16px;
+  }
+
+  .deliverable-card .tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .deliverable-card p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink);
+  }
+
+  /* ---------- Tools ---------- */
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .tool-pill {
+    border: 1px solid var(--line);
+    background: var(--card-bg);
+    padding: 7px 14px;
+    font-size: 13.5px;
+    color: var(--ink);
   }
 
   /* ---------- Roadmap ---------- */
@@ -217,50 +378,6 @@
     white-space: nowrap;
   }
 
-  /* ---------- Assignments ---------- */
-  .deliverables {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 14px;
-  }
-
-  .deliverable-card {
-    background: var(--card-bg);
-    border: 1px solid var(--line);
-    padding: 18px 16px;
-  }
-
-  .deliverable-card .tag {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--gold);
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .deliverable-card p {
-    margin: 0;
-    font-size: 14px;
-    color: var(--ink);
-  }
-
-  /* ---------- Tools ---------- */
-  .tools {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .tool-pill {
-    border: 1px solid var(--line);
-    background: var(--card-bg);
-    padding: 7px 14px;
-    font-size: 13.5px;
-    color: var(--ink);
-  }
-
   /* ---------- Footer / CTA ---------- */
   footer {
     border-top: 1px solid var(--line);
@@ -287,7 +404,7 @@
   }
 
   @media (max-width: 640px) {
-    .why-grid, .outcomes { grid-template-columns: 1fr; }
+    .outcomes, .compare-grid { grid-template-columns: 1fr; }
     .week-row { flex-wrap: wrap; }
   }
 </style>
@@ -308,31 +425,55 @@
     </div>
   </header>
 
-  <section id="why">
-    <div class="section-label">Why This Course</div>
-    <h2 class="section-title">Built on the data, tools, and habits the job actually requires</h2>
-    <div class="why-grid">
-      <div class="why-item">
-        <div class="num">01</div>
-        <h3>Real data, not toy data</h3>
-        <p>Every lecture pulls live data straight from NYC's own open data platform — the same kind of messy, real-world data you'll work with on the job.</p>
+  <section id="hook">
+    <div class="section-label">The Real Question</div>
+    <h2 class="section-title">It takes four lines of code to build a machine learning model.</h2>
+    <p class="hook-lead">This is a real, working classifier. You could copy it from a tutorial in under a minute.</p>
+
+    <div class="code-card">
+      <div class="code-card-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <pre><code><span class="tok-kw">from</span> sklearn.linear_model <span class="tok-kw">import</span> LogisticRegression
+
+model = LogisticRegression()
+model.<span class="tok-fn">fit</span>(X_train, y_train)
+predictions = model.<span class="tok-fn">predict</span>(X_test)</code></pre>
+    </div>
+
+    <p class="hook-followup">But can you answer any of these?</p>
+    <ul class="hook-questions">
+      <li>What is <code>.fit()</code> actually computing, mathematically?</li>
+      <li>Is 91% accuracy good — or is the data just 91% one class?</li>
+      <li>Will this model still work on data it has never seen before?</li>
+      <li>If the model gets it wrong, is that the model's fault, or the data's?</li>
+      <li>Is the data even a fair representation of who the model will affect?</li>
+    </ul>
+
+    <p class="hook-close">Anyone can paste four lines of code. This course is built to answer the five questions above — not just the syntax. The vectorized math you write in Week 2 becomes the evaluation metrics you compute by hand in Week 9, which becomes the bias audit you run in Week 14. By the end of the semester, you're not just calling <code>.fit()</code> — you know what it's doing, and whether to trust what it hands back.</p>
+  </section>
+
+  <section id="real-data">
+    <div class="section-label">The Data</div>
+    <h2 class="section-title">The datasets everyone else uses, vs. the data we'll actually use</h2>
+    <div class="compare-grid">
+      <div class="compare-col">
+        <div class="compare-heading">What you'll see in most ML tutorials</div>
+        <ul class="compare-list">
+          <li><strong>Iris flowers</strong> — 150 rows, exactly 50 of each class, zero missing values, collected in 1936.</li>
+          <li><strong>Titanic survival</strong> — a Kaggle puzzle that's been frozen and picked over since 2012.</li>
+          <li><strong>Boston housing prices</strong> — scikit-learn removed this one in 2022, after it came out that one of its "features" encoded racial segregation as a predictor of home value.</li>
+          <li><strong>MNIST digits</strong> — 70,000 handwritten numbers, already cropped, centered, and labeled for you.</li>
+        </ul>
       </div>
-      <div class="why-item">
-        <div class="num">02</div>
-        <h3>A portfolio, not just grades</h3>
-        <p>Every assignment is a real deliverable — a cleaned dataset, an EDA report, a trained model, a bias audit — the kind of work you can show an employer.</p>
-      </div>
-      <div class="why-item">
-        <div class="num">03</div>
-        <h3>Two languages, one skillset</h3>
-        <p>Learn SQL and Pandas side by side, the way working data teams actually move between the two.</p>
-      </div>
-      <div class="why-item">
-        <div class="num">04</div>
-        <h3>Code to neural networks</h3>
-        <p>Start with Python fundamentals in week 2. By week 13, you're training neural networks and calling pretrained models from Hugging Face.</p>
+      <div class="compare-col compare-real">
+        <div class="compare-heading">What we'll use instead</div>
+        <ul class="compare-list">
+          <li><strong>NYC 311 service requests</strong> — pulled live from NYC Open Data. Run it today, run it again Thursday, and you'll get different data both times.</li>
+          <li><strong>NYC restaurant inspections</strong> — three real linked tables, with missing grades, inconsistent text, and duplicate rows you'll have to catch yourself.</li>
+          <li>Nobody has pre-decided what counts as an outlier, what's missing, or what the "right" target column is. That call is yours to make, every week.</li>
+        </ul>
       </div>
     </div>
+    <p class="compare-why">Toy datasets are toy datasets because every hard decision has already been made for you — which is exactly what makes them easy to learn from, and exactly what makes them poor preparation for the actual job. Real data is messy, it changes over time, and it forces judgment calls no tutorial can hand you the answer to. Making those calls well is the actual skill.</p>
   </section>
 
   <section id="outcomes">
@@ -353,6 +494,48 @@
       <li>Train a neural network and apply transfer learning with Hugging Face</li>
       <li>Run a bias audit and communicate fairness metrics in a model card</li>
     </ul>
+  </section>
+
+  <section id="deliverables">
+    <div class="section-label">A Glimpse of the Work</div>
+    <h2 class="section-title">What you'll actually build</h2>
+    <div class="deliverables">
+      <div class="deliverable-card">
+        <span class="tag">Assignment 1</span>
+        <p>Join and clean real restaurant inspection data from three linked tables.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Assignment 2</span>
+        <p>An EDA &amp; visualization report written for a non-technical audience.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Assignment 3</span>
+        <p>Compare classification models on a fraud or churn dataset.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Midterm</span>
+        <p>An end-to-end ML pipeline, built on a real dataset.</p>
+      </div>
+      <div class="deliverable-card">
+        <span class="tag">Capstone</span>
+        <p>A full project with a bias audit, model card, and live presentation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tools">
+    <div class="section-label">Tools You'll Use</div>
+    <div class="tools">
+      <span class="tool-pill">Python</span>
+      <span class="tool-pill">NumPy</span>
+      <span class="tool-pill">Pandas</span>
+      <span class="tool-pill">SQL</span>
+      <span class="tool-pill">scikit-learn</span>
+      <span class="tool-pill">XGBoost</span>
+      <span class="tool-pill">PyTorch</span>
+      <span class="tool-pill">Hugging Face</span>
+      <span class="tool-pill">Git / GitHub</span>
+    </div>
   </section>
 
   <section id="roadmap">
@@ -483,48 +666,6 @@
         </div>
         <div class="week-flag">Final Project</div>
       </div>
-    </div>
-  </section>
-
-  <section id="deliverables">
-    <div class="section-label">A Glimpse of the Work</div>
-    <h2 class="section-title">What you'll actually build</h2>
-    <div class="deliverables">
-      <div class="deliverable-card">
-        <span class="tag">Assignment 1</span>
-        <p>Join and clean real restaurant inspection data from three linked tables.</p>
-      </div>
-      <div class="deliverable-card">
-        <span class="tag">Assignment 2</span>
-        <p>An EDA &amp; visualization report written for a non-technical audience.</p>
-      </div>
-      <div class="deliverable-card">
-        <span class="tag">Assignment 3</span>
-        <p>Compare classification models on a fraud or churn dataset.</p>
-      </div>
-      <div class="deliverable-card">
-        <span class="tag">Midterm</span>
-        <p>An end-to-end ML pipeline, built on a real dataset.</p>
-      </div>
-      <div class="deliverable-card">
-        <span class="tag">Capstone</span>
-        <p>A full project with a bias audit, model card, and live presentation.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="tools">
-    <div class="section-label">Tools You'll Use</div>
-    <div class="tools">
-      <span class="tool-pill">Python</span>
-      <span class="tool-pill">NumPy</span>
-      <span class="tool-pill">Pandas</span>
-      <span class="tool-pill">SQL</span>
-      <span class="tool-pill">scikit-learn</span>
-      <span class="tool-pill">XGBoost</span>
-      <span class="tool-pill">PyTorch</span>
-      <span class="tool-pill">Hugging Face</span>
-      <span class="tool-pill">Git / GitHub</span>
     </div>
   </section>
 
