@@ -10,7 +10,7 @@ CS383 runs on a JupyterHub hosted through **NAIRR Pilot / CloudBank**, built and
 
 1. Go to **[york.cloudbank.2i2c.cloud](https://york.cloudbank.2i2c.cloud)**.
 2. Click **Log in to continue**, and sign in with the credentials your instructor gave you access with.
-3. The first time you log in, your personal server needs to start up — this can take a minute or two. You'll land in the **JupyterLab** interface once it's ready: a file browser on the left, and a Launcher tab in the middle.
+3. The first time you log in, your personal server needs to start up — this can take a minute or two. You'll land in the **Notebook** interface once it's ready — a single notebook view with a toolbar across the top (Save, Run, Kernel status, a Download button, and more). If you ever want the full multi-panel JupyterLab workspace instead, click the **JupyterLab** icon near the top right of that toolbar to switch views.
 
 You only need to do this once per session. Your files persist between logins — you don't need to re-upload anything you've already saved.
 
@@ -57,11 +57,21 @@ A few things that catch people off guard:
 
 ## Download Notebooks
 
-To save a copy of your notebook to your own computer:
+Click the **Download** button directly in the toolbar at the top of the notebook. This downloads the standard `.ipynb` file to your own computer — the same format you'll submit for assignments.
 
-**File** menu → **Save and Export Notebook As...** → **Notebook (.ipynb)**
+(If you're in full JupyterLab view instead, use **File** menu → **Save and Export Notebook As...** → **Notebook (.ipynb)**, which also lets you export to HTML, PDF, or Markdown if you ever need a shareable, non-interactive version.)
 
-This downloads the standard `.ipynb` file — the same format you'll submit for assignments. The same menu lets you export to other formats (HTML, PDF, Markdown, etc.) if you ever need a shareable, non-interactive version.
+---
+
+## Saving Your Work
+
+Your files persist on the Hub between logins on their own — you don't need to download after every single edit just to avoid losing work. But you should still get in the habit of downloading a local copy **at the end of every class session**, for a few reasons:
+
+- **This is a pilot service.** The Hub's own login page says it plainly: *"this is a proof-of-concept service, students should ensure they are backing up their notebooks regularly."* Don't treat Hub storage as permanent.
+- **Storage is limited.** Each student gets a modest storage allocation — across 15 weeks of lecture, exercise, and assignment notebooks, that can add up.
+- **You'll need a local copy to submit anyway.** There's no automatic submission from the Hub to the LMS — always download before you submit an assignment.
+
+Longer term, once you've completed a piece of work you're proud of (an assignment, your capstone), consider pushing it to your **own personal GitHub repository** too, not just leaving it in your CloudBank account. You'll lose access to this Hub after the semester ends, but a portfolio on your own GitHub is exactly the kind of thing this course is meant to help you build — and it should still be there when you're applying for internships or jobs.
 
 ---
 
