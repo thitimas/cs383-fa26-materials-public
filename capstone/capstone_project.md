@@ -36,6 +36,34 @@ MNIST, etc.) — the whole point is practicing on data nobody has already cleane
 
 ---
 
+## Model requirements (what's fixed vs. your choice)
+
+**Must be supervised learning** — classification or regression. Unsupervised methods (clustering, PCA)
+are welcome as part of your exploration, but your final model needs to be evaluated against a real
+labeled outcome, which unsupervised methods don't give you.
+
+**Your algorithm must be one we've covered in class:**
+
+- Regression: Linear Regression, Ridge/Lasso
+- Classification: Logistic Regression, k-NN, Decision Tree, Random Forest, XGBoost
+- (Decision Tree, Random Forest, and XGBoost all have regressor versions too, if your problem is regression)
+
+No neural networks, deep learning, or other tools we haven't covered in class. The point of this project
+is demonstrating what *you* learned this semester, not what a library can do on its own. If you're unsure
+whether something counts, ask before you build around it.
+
+**Everything else is your call, guided by your own EDA:** which specific algorithm above fits your
+problem, your feature engineering choices, whether you use an sklearn Pipeline (encouraged — this is
+Week 11 content), and how you tune it (`GridSearchCV`, manual trial-and-error, or something else — both
+count as a real improvement attempt for Step 7).
+
+**Keep it running fast.** Our JupyterHub is a CPU-only pilot service — your model needs to train in a few
+minutes, not tens of minutes. If your dataset is large, sample it down to something manageable and say so
+directly in your notebook; a documented, honest sample beats an untested full-scale run that might not
+even finish.
+
+---
+
 ## Live deployment (required)
 
 Your model needs to be reachable at a public URL where someone who has never seen your notebook can type
