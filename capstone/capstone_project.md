@@ -32,6 +32,21 @@ MNIST, etc.) — the whole point is practicing on data nobody has already cleane
    hyperparameter tuning, etc.) and what happened when you did
 7. A short **ethics and limitations reflection** — see below
 8. A plain-language summary a non-technical reader could understand, plus a short presentation
+9. A **live, working deployment** of your model — see below
+
+---
+
+## Live deployment (required)
+
+Your model needs to be reachable at a public URL where someone who has never seen your notebook can type
+in some values and get a real prediction back. This is what turns your capstone from "a project I did for
+a class" into something you can actually put on a resume and invite someone to click.
+
+Full step-by-step instructions — saving your model, building a small app, and deploying it for free — are
+in the separate **[Capstone Deployment Guide](capstone_deployment_guide.md)**. Start that process well
+before Week 15; deployment issues are much easier to debug with time to spare.
+
+Your final submission must include the live URL, and it must actually work when your instructor tries it.
 
 ---
 
@@ -68,7 +83,10 @@ check on BrightSpace under their respective assignment entries.
 1. **A Jupyter notebook** containing your full pipeline, organized into 8 clearly labeled sections
    mirroring the workflow above. Use markdown throughout to explain your reasoning at each step — this
    should read as a story, not just a sequence of code cells.
-2. **A short presentation** during Week 15 covering your problem, approach, and findings (length and
+2. **A live deployed app** at a public URL (see the [Capstone Deployment Guide](capstone_deployment_guide.md)),
+   plus the public GitHub repo it's deployed from.
+3. **A short presentation** during Week 15 covering your problem, approach, and findings (length and
    format details will be shared closer to the date).
 
-Submit your final notebook on BrightSpace under **Capstone Project** before your presentation.
+Submit your final notebook, GitHub repo link, and live app link on BrightSpace under **Capstone Project**
+before your presentation.
