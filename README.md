@@ -10,11 +10,15 @@ answer keys.
 ```
 cs383-fa26-materials-public/
 ├── index.html                                          (course landing page)
+├── jupyterhub_guide.md                                 (student guide to the JupyterHub)
+├── lab00_prelecture/
+│   └── lab00_jupyter_warmup.ipynb                      (ungraded, pre-Lecture 1 mechanics)
 ├── lect01/
 │   ├── lect01_intro_to_ds_ml_live.ipynb               (live in-class version)
-│   ├── lect01_intro_to_ds_ml_exercise.ipynb           (reflection + optional challenge)
+│   ├── lect01_intro_to_ds_ml_exercise.ipynb           (reflection + hands-on data exploration)
 │   ├── thai_character_activity.html                   (unplugged activity)
-│   └── unsupervised_sorting_activity.html             (unplugged activity)
+│   ├── unsupervised_sorting_activity.html             (unplugged activity)
+│   └── images/                                         (Types of Data diagram)
 ├── lect02/
 │   ├── lect02_python_numpy_vectorization_live.ipynb
 │   └── lect02_python_numpy_vectorization_exercise.ipynb
@@ -26,10 +30,19 @@ cs383-fa26-materials-public/
 │   ├── lect04_datetime_cleaning_reshaping_live.ipynb
 │   ├── lect04_datetime_cleaning_reshaping_exercise.ipynb
 │   └── assignment1_restaurant_inspections.ipynb        (graded assignment)
-└── lect05/
-    ├── lect05_eda_statistics_live.ipynb
-    ├── lect05_eda_statistics_exercise.ipynb
-    └── images/                                         (reference figures used in the live notebook)
+├── lect05/
+│   ├── lect05_eda_statistics_live.ipynb
+│   ├── lect05_eda_statistics_exercise.ipynb
+│   └── images/                                         (reference figures used in the live notebook)
+├── lect06/
+│   ├── lect06_feature_engineering_live.ipynb           (encoding, scaling, data leakage)
+│   └── lect06_feature_engineering_exercise.ipynb
+├── lect07/
+│   └── lect07_sneak_peek_iris.ipynb                    (Week 7 trailer: classification + regression demo)
+└── capstone/
+    ├── capstone_project.md                              (final project prompt)
+    ├── capstone_proposal_template.md                     (Week 5 proposal)
+    └── capstone_deployment_guide.md                      (live deployment instructions)
 ```
 
 Every `_exercise.ipynb` notebook is fill-in-the-blank practice (`__________`
