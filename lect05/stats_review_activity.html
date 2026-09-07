@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 5 Stats Review</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --mean-color: #2b6cb0;
+    --median-color: #d69a1f;
+    --outlier-color: #d64545;
+    --line-color: #e2e0d8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 760px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 18px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary { background: var(--mean-color); color: #fff; }
+  .btn-secondary { background: #e2e0d8; color: var(--ink); }
+  .btn-secondary.active { background: var(--ink); color: #fff; }
+  .btn-nav { background: #2b6cb0; color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+  .readout {
+    display: flex; justify-content: center; gap: 22px; flex-wrap: wrap;
+    margin: 14px 0 6px; font-size: 15px;
+  }
+  .readout .stat { text-align: center; }
+  .readout .stat .val { font-size: 20px; font-weight: 800; display: block; }
+  .readout .stat .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .readout .stat.mean .val { color: var(--mean-color); }
+  .readout .stat.median .val { color: var(--median-color); }
+
+  .legend { display:flex; justify-content:center; gap:18px; flex-wrap:wrap; font-size:13px; color:var(--muted); margin-top:6px;}
+  .legend span { display:inline-flex; align-items:center; gap:6px;}
+  .swatch { width:14px; height:14px; border-radius:3px; display:inline-block;}
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--mean-color); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--mean-color); }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 760px; margin: 0 auto; }
+
+  #summaryPanel table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #summaryPanel th, #summaryPanel td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  #summaryPanel th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align:center; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 5 Review — Mean, Spread, Shape &amp; Correlation</h1>
+  <p>An interactive review of the "need to know" statistics from Lecture 5 — click around, toggle the buttons, and see how each concept behaves before you meet it again in real (messier) data.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Companion review for Lecture 5 (EDA &amp; Foundational Statistics)
+</footer>
+
+<script>
+/* ---------- shared stat helpers (plain JS, no libraries) ---------- */
+function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function median(arr) {
+  const s=[...arr].sort((a,b)=>a-b); const n=s.length; const mid=Math.floor(n/2);
+  return n%2 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+function popStd(arr) {
+  const m=mean(arr); const v=arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length; return Math.sqrt(v);
+}
+function quantile(sortedArr, q) {
+  const n = sortedArr.length; const pos = (n-1)*q; const base = Math.floor(pos); const rest = pos-base;
+  return (sortedArr[base+1]!==undefined) ? sortedArr[base]+rest*(sortedArr[base+1]-sortedArr[base]) : sortedArr[base];
+}
+function modeOf(arr) {
+  const counts={}; arr.forEach(v=>counts[v]=(counts[v]||0)+1);
+  let best=null,bestCount=0;
+  Object.entries(counts).forEach(([k,c])=>{ if(c>bestCount){best=Number(k); bestCount=c;} });
+  return {value:best,count:bestCount};
+}
+function pearsonR(xs, ys) {
+  const n=xs.length; const mx=mean(xs), my=mean(ys);
+  let num=0, dx2=0, dy2=0;
+  for (let i=0;i<n;i++){ const dx=xs[i]-mx, dy=ys[i]-my; num+=dx*dy; dx2+=dx*dx; dy2+=dy*dy; }
+  return num/Math.sqrt(dx2*dy2);
+}
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* ---------- Round 1 data: mean / median / mode ---------- */
+const R1_BASE = [72, 74, 75, 75, 76, 78, 79, 80, 82, 84];
+let r1HasOutlier = false;
+
+function r1Data() { return r1HasOutlier ? [...R1_BASE, 20] : [...R1_BASE]; }
+
+function renderDotPlot(container, data, opts) {
+  container.innerHTML = '';
+  const width = 640, height = 130, padX = 30, axisY = 95;
+  const min = 0, max = 100;
+  const xOf = v => padX + (v-min)/(max-min) * (width - 2*padX);
+  const s = svg('svg', {width, height, viewBox: `0 0 ${width} ${height}`});
+  // axis
+  s.appendChild(svg('line', {x1:padX, y1:axisY, x2:width-padX, y2:axisY, stroke:'#cfcdc3', 'stroke-width':2}));
+  for (let t=min; t<=max; t+=10) {
+    const x = xOf(t);
+    s.appendChild(svg('line', {x1:x, y1:axisY, x2:x, y2:axisY+5, stroke:'#cfcdc3', 'stroke-width':1}));
+    const lbl = svg('text', {x, y:axisY+18, 'text-anchor':'middle', 'font-size':10, fill:'#9a9488'});
+    lbl.textContent = t; s.appendChild(lbl);
+  }
+  // stack dots that share a value
+  const stacks = {};
+  data.forEach(v => { stacks[v] = stacks[v]||0; });
+  const seen = {};
+  data.forEach(v => {
+    seen[v] = (seen[v]||0)+1;
+    const stackIndex = seen[v]-1;
+    const cx = xOf(v);
+    const cy = axisY - 10 - stackIndex*16;
+    const isMode = opts.modeVal!=null && v===opts.modeVal;
+    const isOutlier = opts.outlierVal!=null && v===opts.outlierVal;
+    const c = svg('circle', {cx, cy, r:7,
+      fill: isOutlier ? 'var(--outlier-color)' : (isMode ? 'var(--median-color)' : '#7d93ad'),
+      stroke: isMode ? 'var(--median-color)' : 'none', 'stroke-width': isMode ? 2.5 : 0,
+      opacity: 0.9});
+    s.appendChild(c);
+  });
+  // mean marker (solid blue)
+  const mx = xOf(opts.mean);
+  s.appendChild(svg('line', {x1:mx, y1:8, x2:mx, y2:axisY, stroke:'var(--mean-color)', 'stroke-width':3}));
+  const mt = svg('text', {x:mx, y:6, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'var(--mean-color)'});
+  mt.textContent = 'mean'; s.appendChild(mt);
+  // median marker (dashed amber)
+  const dx = xOf(opts.median);
+  s.appendChild(svg('line', {x1:dx, y1:8, x2:dx, y2:axisY, stroke:'var(--median-color)', 'stroke-width':3, 'stroke-dasharray':'5,4'}));
+  const dtxt = svg('text', {x:dx, y:20, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'var(--median-color)'});
+  dtxt.textContent = 'median'; s.appendChild(dtxt);
+  container.appendChild(s);
+}
+
+function renderRound1() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>1 &middot; Mean, Median &amp; Mode</h2>
+    <p class="lede">Ten students' exam scores (out of 100). Watch what happens to each measure of "center" when one student has a genuinely rough exam.</p>
+    <div id="r1chart"></div>
+    <div class="readout">
+      <div class="stat mean"><span class="val" id="r1mean"></span><span class="lbl">Mean</span></div>
+      <div class="stat median"><span class="val" id="r1median"></span><span class="lbl">Median</span></div>
+      <div class="stat"><span class="val" id="r1mode"></span><span class="lbl">Mode</span></div>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="r1toggle">Add an outlier (one student scored a 20)</button>
+    </div>
+    <div class="quiz" id="r1quiz">
+      <div class="q">Which measure moves the most once the low score is added?</div>
+      <div class="options">
+        <div class="opt" data-v="mean">Mean</div>
+        <div class="opt" data-v="median">Median</div>
+        <div class="opt" data-v="mode">Mode</div>
+      </div>
+      <div class="feedback" id="r1feedback"></div>
+    </div>
+    <div class="callout"><strong>Why it matters later:</strong> the mean is pulled toward outliers; the median mostly isn't. In Lecture 6, <code>StandardScaler</code> centers features on the <em>mean</em> — a single extreme value can quietly shift where "zero" sits for every other row.</div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+
+  function refresh() {
+    const data = r1Data();
+    const m = mean(data), md = median(data), mo = modeOf(data);
+    document.getElementById('r1mean').textContent = m.toFixed(1);
+    document.getElementById('r1median').textContent = md.toFixed(1);
+    document.getElementById('r1mode').textContent = mo.value;
+    renderDotPlot(document.getElementById('r1chart'), data, {mean:m, median:md, modeVal:mo.value, outlierVal: r1HasOutlier?20:null});
+    document.getElementById('r1toggle').textContent = r1HasOutlier ? 'Remove the outlier' : 'Add an outlier (one student scored a 20)';
+  }
+  document.getElementById('r1toggle').onclick = () => { r1HasOutlier = !r1HasOutlier; refresh(); };
+  refresh();
+
+  document.querySelectorAll('#r1quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r1quiz .opt').forEach(o=>o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r1feedback');
+      if (opt.dataset.v === 'mean') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = 'Right. The mean drops from 77.5 to about 72.3 — pulled down by one point. The median barely moves (77 → 76), and the mode doesn\'t move at all.';
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector(`#r1quiz .opt[data-v="mean"]`).classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = 'Not quite — try the outlier toggle above and compare the numbers. The mean is the one that moves the most.';
+      }
+    };
+  });
+}
+
+/* ---------- Round 2 data: std / IQR / outliers ---------- */
+const CLASS_A = [66, 67, 69, 70, 71, 71, 71, 74, 74, 75, 76, 78, 79, 79, 80, 81, 82, 82, 82, 82, 85, 85, 85, 88];
+const CLASS_B = [15, 20, 25, 70, 71, 72, 72, 73, 75, 76, 77, 77, 78, 78, 78, 78, 79, 80, 80, 80, 82, 83, 83, 89];
+let r2Class = 'A';
+let r2Revealed = false;
+
+function statsFor(arr) {
+  const s = [...arr].sort((a,b)=>a-b);
+  const q1 = quantile(s,0.25), q2 = quantile(s,0.5), q3 = quantile(s,0.75);
+  const iqr = q3-q1, lower = q1-1.5*iqr, upper = q3+1.5*iqr;
+  const outliers = arr.filter(v=>v<lower||v>upper);
+  return {mean:mean(arr), std:popStd(arr), q1, q2, q3, lower, upper, outliers, min:Math.min(...arr), max:Math.max(...arr)};
+}
+
+function renderBoxPlot(container, arr, st, revealed) {
+  container.innerHTML = '';
+  const width = 640, height = 140, padX = 30, axisY = 100, boxH = 34;
+  const min = 0, max = 100;
+  const xOf = v => padX + (v-min)/(max-min) * (width - 2*padX);
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padX, y1:axisY+boxH/2+20, x2:width-padX, y2:axisY+boxH/2+20, stroke:'#cfcdc3', 'stroke-width':2}));
+  for (let t=min;t<=max;t+=10) {
+    const x = xOf(t);
+    s.appendChild(svg('line', {x1:x, y1:axisY+boxH/2+20, x2:x, y2:axisY+boxH/2+25, stroke:'#cfcdc3', 'stroke-width':1}));
+    const lbl = svg('text', {x, y:axisY+boxH/2+38, 'text-anchor':'middle', 'font-size':10, fill:'#9a9488'});
+    lbl.textContent = t; s.appendChild(lbl);
+  }
+  const boxTop = axisY - boxH/2;
+  if (revealed) {
+    // whiskers from fences (clipped to data min/max) to box
+    const whiskerLow = Math.max(st.min, st.lower), whiskerHigh = Math.min(st.max, st.upper);
+    s.appendChild(svg('line', {x1:xOf(whiskerLow), y1:axisY, x2:xOf(st.q1), y2:axisY, stroke:'#8a95a8', 'stroke-width':2}));
+    s.appendChild(svg('line', {x1:xOf(st.q3), y1:axisY, x2:xOf(whiskerHigh), y2:axisY, stroke:'#8a95a8', 'stroke-width':2}));
+    s.appendChild(svg('line', {x1:xOf(whiskerLow), y1:boxTop, x2:xOf(whiskerLow), y2:boxTop+boxH, stroke:'#8a95a8', 'stroke-width':2}));
+    s.appendChild(svg('line', {x1:xOf(whiskerHigh), y1:boxTop, x2:xOf(whiskerHigh), y2:boxTop+boxH, stroke:'#8a95a8', 'stroke-width':2}));
+  }
+  // box (Q1-Q3)
+  s.appendChild(svg('rect', {x:xOf(st.q1), y:boxTop, width:xOf(st.q3)-xOf(st.q1), height:boxH, fill:'#dce8f5', stroke:'var(--mean-color)', 'stroke-width':2}));
+  // median line
+  s.appendChild(svg('line', {x1:xOf(st.q2), y1:boxTop, x2:xOf(st.q2), y2:boxTop+boxH, stroke:'var(--median-color)', 'stroke-width':3}));
+  // data points (jittered vertically a bit above the box)
+  arr.forEach((v,i) => {
+    const isOut = revealed && (v<st.lower || v>st.upper);
+    const jitter = ((i%5)-2)*4;
+    s.appendChild(svg('circle', {cx:xOf(v), cy: boxTop-14+jitter*0.4, r:4.5, fill: isOut ? 'var(--outlier-color)' : '#7d93ad', opacity:0.85}));
+  });
+  if (revealed) {
+    [st.lower, st.upper].forEach(f => {
+      if (f>=min && f<=max) {
+        const x = xOf(f);
+        s.appendChild(svg('line', {x1:x, y1:boxTop-24, x2:x, y2:boxTop+boxH+10, stroke:'var(--outlier-color)', 'stroke-width':1.5, 'stroke-dasharray':'4,3'}));
+      }
+    });
+  }
+  container.appendChild(s);
+}
+
+function renderRound2() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>2 &middot; Spread: Standard Deviation &amp; IQR</h2>
+    <p class="lede">Same idea, two classes. Class A and Class B have nearly the same median — but very different spread. Toggle between them, then reveal the 1.5&times;IQR outlier fence.</p>
+    <div class="controls">
+      <button class="btn-secondary" id="r2classA">Class A</button>
+      <button class="btn-secondary" id="r2classB">Class B</button>
+    </div>
+    <div id="r2chart"></div>
+    <div class="readout">
+      <div class="stat mean"><span class="val" id="r2mean"></span><span class="lbl">Mean</span></div>
+      <div class="stat median"><span class="val" id="r2median"></span><span class="lbl">Median</span></div>
+      <div class="stat"><span class="val" id="r2std"></span><span class="lbl">Std Dev</span></div>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="r2reveal">Reveal IQR fence &amp; outliers</button>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#7d93ad"></span> data point</span>
+      <span><span class="swatch" style="background:var(--outlier-color)"></span> flagged outlier</span>
+      <span><span class="swatch" style="background:var(--median-color)"></span> median line</span>
+    </div>
+    <div class="quiz" id="r2quiz">
+      <div class="q">How many of Class B's 24 scores fall outside the 1.5&times;IQR fence?</div>
+      <div class="options">
+        <div class="opt" data-v="0">0</div>
+        <div class="opt" data-v="1">1</div>
+        <div class="opt" data-v="3">3</div>
+        <div class="opt" data-v="5">5</div>
+      </div>
+      <div class="feedback" id="r2feedback"></div>
+    </div>
+    <div class="callout"><strong>Why it matters later:</strong> a bigger standard deviation means squared-error loss (the thing linear regression minimizes in Lecture 7) gets dominated by a few extreme points. The IQR-based fence is a more robust way to flag them.</div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+
+  function refresh() {
+    const arr = r2Class==='A' ? CLASS_A : CLASS_B;
+    const st = statsFor(arr);
+    document.getElementById('r2mean').textContent = st.mean.toFixed(1);
+    document.getElementById('r2median').textContent = st.q2.toFixed(1);
+    document.getElementById('r2std').textContent = st.std.toFixed(1);
+    renderBoxPlot(document.getElementById('r2chart'), arr, st, r2Revealed);
+    document.getElementById('r2classA').classList.toggle('active', r2Class==='A');
+    document.getElementById('r2classB').classList.toggle('active', r2Class==='B');
+    document.getElementById('r2reveal').textContent = r2Revealed ? 'Hide fence' : 'Reveal IQR fence & outliers';
+  }
+  document.getElementById('r2classA').onclick = () => { r2Class='A'; refresh(); };
+  document.getElementById('r2classB').onclick = () => { r2Class='B'; refresh(); };
+  document.getElementById('r2reveal').onclick = () => { r2Revealed = !r2Revealed; refresh(); };
+  refresh();
+
+  document.querySelectorAll('#r2quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r2quiz .opt').forEach(o=>o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r2feedback');
+      if (opt.dataset.v === '3') {
+        opt.classList.add('correct');
+        fb.className='feedback right';
+        fb.textContent = 'Right — exactly the three planted low scores (15, 20, 25). Switch to Class B and reveal the fence to see it.';
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector(`#r2quiz .opt[data-v="3"]`).classList.add('correct');
+        fb.className='feedback wrong';
+        fb.textContent = 'Switch to Class B and click "Reveal IQR fence" to check — the answer is 3.';
+      }
+    };
+  });
+}
+
+/* ---------- Round 3: distribution shape & skew ---------- */
+let r3Shape = 'symmetric';
+const SHAPES = {
+  symmetric: {bars:[2,5,9,14,18,20,18,14,9,5,2], mean:5, median:5, label:'Symmetric'},
+  right:     {bars:[22,20,16,12,9,6,4,3,2,1,1],  mean:4.6, median:3, label:'Right-skewed (long tail →)'},
+  left:      {bars:[1,1,2,3,4,6,9,12,16,20,22],  mean:5.4, median:7, label:'Left-skewed (← long tail)'}
+};
+
+function renderHistogram(container, shapeKey) {
+  container.innerHTML = '';
+  const shape = SHAPES[shapeKey];
+  const width = 640, height = 160, padX = 30, axisY = 130;
+  const n = shape.bars.length;
+  const barW = (width - 2*padX) / n - 6;
+  const maxBar = Math.max(...shape.bars);
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padX, y1:axisY, x2:width-padX, y2:axisY, stroke:'#cfcdc3', 'stroke-width':2}));
+  const xOfBin = i => padX + i*(width-2*padX)/n + 3;
+  shape.bars.forEach((h,i) => {
+    const barH = (h/maxBar) * 90;
+    s.appendChild(svg('rect', {x:xOfBin(i), y:axisY-barH, width:barW, height:barH, fill:'#a9c2dd', rx:3}));
+  });
+  const xOfPos = pos => padX + (pos+0.5)*(width-2*padX)/n;
+  const mx = xOfPos(shape.mean);
+  s.appendChild(svg('line', {x1:mx, y1:10, x2:mx, y2:axisY, stroke:'var(--mean-color)', 'stroke-width':3}));
+  const mt = svg('text', {x:mx, y:8, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'var(--mean-color)'}); mt.textContent='mean'; s.appendChild(mt);
+  const dx = xOfPos(shape.median);
+  s.appendChild(svg('line', {x1:dx, y1:10, x2:dx, y2:axisY, stroke:'var(--median-color)', 'stroke-width':3, 'stroke-dasharray':'5,4'}));
+  const dtxt = svg('text', {x:dx, y:22, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'var(--median-color)'}); dtxt.textContent='median'; s.appendChild(dtxt);
+  container.appendChild(s);
+}
+
+function renderRound3() {
+  const p = document.createElement('div'); p.className='panel';
+  p.innerHTML = `
+    <h2>3 &middot; Distribution Shape &amp; Skew</h2>
+    <p class="lede">Illustrative shapes (not real data) — toggle to see where the mean sits relative to the median as the tail moves.</p>
+    <div class="controls">
+      <button class="btn-secondary" id="r3sym">Symmetric</button>
+      <button class="btn-secondary" id="r3right">Right-skewed</button>
+      <button class="btn-secondary" id="r3left">Left-skewed</button>
+    </div>
+    <div id="r3chart"></div>
+    <p class="small-note" id="r3shapelabel"></p>
+    <div class="callout" id="r3real"><strong>The real version of this:</strong> NYC 311 <code>resolution_time_hours</code> has mean <strong>39.94</strong> hours but median <strong>33.60</strong> hours — mean &gt; median, a classic right-skew signature. A handful of very slow-resolving complaints pull the mean up without moving the median much.</div>
+    <div class="quiz" id="r3quiz">
+      <div class="q">A dataset has mean &gt; median. What shape is it?</div>
+      <div class="options">
+        <div class="opt" data-v="sym">Symmetric</div>
+        <div class="opt" data-v="right">Right-skewed</div>
+        <div class="opt" data-v="left">Left-skewed</div>
+      </div>
+      <div class="feedback" id="r3feedback"></div>
+    </div>
+    <div class="callout"><strong>Why it matters later:</strong> Lecture 7 applies <code>log1p()</code> to this exact right-skewed column before modeling it — compressing the long tail so a handful of extreme resolution times don't dominate the fit.</div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+  function refresh() {
+    renderHistogram(document.getElementById('r3chart'), r3Shape);
+    document.getElementById('r3shapelabel').textContent = SHAPES[r3Shape].label;
+    document.getElementById('r3sym').classList.toggle('active', r3Shape==='symmetric');
+    document.getElementById('r3right').classList.toggle('active', r3Shape==='right');
+    document.getElementById('r3left').classList.toggle('active', r3Shape==='left');
+  }
+  document.getElementById('r3sym').onclick = () => { r3Shape='symmetric'; refresh(); };
+  document.getElementById('r3right').onclick = () => { r3Shape='right'; refresh(); };
+  document.getElementById('r3left').onclick = () => { r3Shape='left'; refresh(); };
+  refresh();
+
+  document.querySelectorAll('#r3quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r3quiz .opt').forEach(o=>o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r3feedback');
+      if (opt.dataset.v === 'right') {
+        opt.classList.add('correct');
+        fb.className='feedback right';
+        fb.textContent = 'Right. A long tail on the high end pulls the mean above the median — exactly what happens with resolution_time_hours.';
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector(`#r3quiz .opt[data-v="right"]`).classList.add('correct');
+        fb.className='feedback wrong';
+        fb.textContent = 'Toggle "Right-skewed" above and compare the mean/median markers — mean > median means right-skewed.';
+      }
+    };
+  });
+}
+
+/* ---------- Round 4: correlation vs causation ---------- */
+let r4Preset = 'strong';
+const PRESETS = {
+  strong: {
+    label: 'Strong relationship',
+    x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+    y: [8,5,14,10,22,15,19,29,22,35,28,38,44,36,47],
+    note: 'A real, strong linear relationship — as x increases, y reliably increases too.'
+  },
+  none: {
+    label: 'No relationship (real 311 finding)',
+    x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+    y: [42,18,55,30,47,12,60,25,38,50,15,58,22,45,33,8,52,28,40,20],
+    note: 'Stylized re-creation of the shape (not the literal raw rows). The real Lecture 5 finding: hour-of-day filed vs. resolution time in the actual 311 snapshot, r ≈ 0.001 — essentially no linear relationship.'
+  }
+};
+
+function renderScatter(container, xs, ys, opts) {
+  container.innerHTML = '';
+  const width=640, height=260, pad=40;
+  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+  const xOf = v => pad + (v-minX)/(maxX-minX||1) * (width-2*pad);
+  const yOf = v => height-pad - (v-minY)/(maxY-minY||1) * (height-2*pad);
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:pad, y1:height-pad, x2:width-pad, y2:height-pad, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:pad, y1:pad, x2:pad, y2:height-pad, stroke:'#cfcdc3', 'stroke-width':2}));
+  xs.forEach((x,i) => {
+    s.appendChild(svg('circle', {cx:xOf(x), cy:yOf(ys[i]), r:6, fill:'#2b6cb0', opacity:0.75}));
+  });
+  if (opts && opts.extraSeries) {
+    opts.extraSeries.forEach(series => {
+      series.x.forEach((x,i) => {
+        s.appendChild(svg('circle', {cx:xOf(x), cy:yOf(series.y[i]), r:6, fill:series.color, opacity:0.75}));
+      });
+    });
+  }
+  container.appendChild(s);
+}
+
+function renderConfounder(container, revealed) {
+  container.innerHTML = '';
+  const months = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const temp     = [30,32,40,50,60,70,78,76,68,55,42,33];
+  const iceCream = [20,24,35,48,66,85,98,94,80,55,38,25];
+  const drowning = [1, 1, 2, 3, 5, 8, 10, 9, 6, 3, 2, 1];
+  const width=640, height=220, pad=40;
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  const xOf = i => pad + i*(width-2*pad)/(months.length-1);
+  function seriesPath(vals, maxV) {
+    return vals.map((v,i) => `${i===0?'M':'L'} ${xOf(i)} ${height-pad-(v/maxV)*(height-2*pad)}`).join(' ');
+  }
+  s.appendChild(svg('line', {x1:pad, y1:height-pad, x2:width-pad, y2:height-pad, stroke:'#cfcdc3', 'stroke-width':2}));
+  months.forEach((m,i) => {
+    const lbl = svg('text', {x:xOf(i), y:height-pad+16, 'text-anchor':'middle', 'font-size':10, fill:'#9a9488'});
+    lbl.textContent = m; s.appendChild(lbl);
+  });
+  s.appendChild(svg('path', {d:seriesPath(iceCream,100), fill:'none', stroke:'#d69a1f', 'stroke-width':3}));
+  s.appendChild(svg('path', {d:seriesPath(drowning.map(v=>v*10),100), fill:'none', stroke:'#2b6cb0', 'stroke-width':3}));
+  if (revealed) {
+    s.appendChild(svg('path', {d:seriesPath(temp,100), fill:'none', stroke:'#8a95a8', 'stroke-width':2, 'stroke-dasharray':'6,4'}));
+  }
+  container.appendChild(s);
+  const legend = document.createElement('div'); legend.className='legend';
+  legend.innerHTML = `
+    <span><span class="swatch" style="background:#d69a1f"></span> Ice cream sales</span>
+    <span><span class="swatch" style="background:#2b6cb0"></span> Drowning incidents (&times;10 to fit the chart)</span>
+    ${revealed ? '<span><span class="swatch" style="background:#8a95a8"></span> Temperature (the confounder)</span>' : ''}
+  `;
+  container.appendChild(legend);
+}
+
+function renderAnscombe(container) {
+  container.innerHTML='';
+  const ax = [10,8,13,9,11,14,6,4,12,7,5];
+  const ay1 = [8.04,6.95,7.58,8.81,8.33,9.96,7.24,4.26,10.84,4.82,5.68];
+  const ay3 = [7.46,6.77,12.74,7.11,7.81,8.84,6.08,5.39,8.15,6.42,5.73];
+  const wrap = document.createElement('div');
+  wrap.style.display='flex'; wrap.style.gap='16px'; wrap.style.flexWrap='wrap'; wrap.style.justifyContent='center';
+  [['Dataset I (roughly linear)', ay1], ['Dataset III (one point drives it all)', ay3]].forEach(([label, ay]) => {
+    const box = document.createElement('div'); box.style.textAlign='center';
+    const title = document.createElement('div'); title.style.fontSize='13px'; title.style.fontWeight='700'; title.style.marginBottom='4px';
+    title.textContent = label + ` — r = ${pearsonR(ax,ay).toFixed(3)}`;
+    box.appendChild(title);
+    const mini = document.createElement('div');
+    const width=300, height=220, pad=30;
+    const minX=Math.min(...ax), maxX=Math.max(...ax), minY=Math.min(...ay)-1, maxY=Math.max(...ay)+1;
+    const xOf = v => pad + (v-minX)/(maxX-minX) * (width-2*pad);
+    const yOf = v => height-pad - (v-minY)/(maxY-minY) * (height-2*pad);
+    const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+    s.appendChild(svg('line', {x1:pad, y1:height-pad, x2:width-pad, y2:height-pad, stroke:'#cfcdc3', 'stroke-width':2}));
+    s.appendChild(svg('line', {x1:pad, y1:pad, x2:pad, y2:height-pad, stroke:'#cfcdc3', 'stroke-width':2}));
+    ax.forEach((x,i) => s.appendChild(svg('circle', {cx:xOf(x), cy:yOf(ay[i]), r:6, fill:'#2b6cb0', opacity:0.8})));
+    mini.appendChild(s);
+    box.appendChild(mini);
+    wrap.appendChild(box);
+  });
+  container.appendChild(wrap);
+}
+
+function renderRound4() {
+  const p = document.createElement('div'); p.className='panel';
+  p.innerHTML = `
+    <h2>4 &middot; Correlation vs. Causation</h2>
+    <p class="lede">A correlation coefficient (r) tells you how tightly two variables move together — nothing about why. Toggle through these examples.</p>
+    <div class="controls">
+      <button class="btn-secondary" id="r4strong">Strong relationship</button>
+      <button class="btn-secondary" id="r4none">No relationship</button>
+      <button class="btn-secondary" id="r4confound">Confounded example</button>
+      <button class="btn-secondary" id="r4anscombe">Same r, different shape</button>
+    </div>
+    <div id="r4main"></div>
+    <div class="readout" id="r4readout"></div>
+    <p class="small-note" id="r4note"></p>
+    <div class="controls" id="r4revealwrap" style="display:none">
+      <button class="btn-primary" id="r4reveal">Reveal the confounder</button>
+    </div>
+    <div class="quiz" id="r4quiz">
+      <div class="q" id="r4q"></div>
+      <div class="options" id="r4opts"></div>
+      <div class="feedback" id="r4feedback"></div>
+    </div>
+    <div class="callout"><strong>Why it matters later:</strong> Lecture 5's real borough-by-borough complaint counts also came out near-zero-correlated — not because boroughs are unrelated, but because of how the snapshot was sampled. Always ask how the data was collected before trusting what a correlation seems to say.</div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+  let confoundRevealed = false;
+
+  const QUIZZES = {
+    strong: {q:'Does a high r here mean x causes y?', opts:[['no','Not necessarily'],['yes','Yes, definitely']], correct:'no',
+      right:'Right — a strong r just means the two move together closely. It\'s consistent with causation but doesn\'t prove it.',
+      wrong:'Not quite — r measures how tightly two variables move together, not why. Try again.'},
+    none: {q:'r ≈ 0 between hour-of-day and resolution time. Does that mean time-of-day has no effect on anything in this data?', opts:[['no','No — it just means no *linear* relationship here'],['yes','Yes, time never matters']], correct:'no',
+      right:'Right — r≈0 only rules out a straight-line relationship for this pair of columns, not every possible pattern or effect.',
+      wrong:'Careful — r≈0 is specific to a linear relationship between exactly these two columns.'},
+    confound: {q:'Ice cream sales and drowning incidents rise and fall together. Does buying ice cream cause drowning?', opts:[['no','No — both are driven by summer heat'],['yes','Yes, sugar impairs swimming']], correct:'no',
+      right:'Right — temperature (or "summer") drives both. This is the classic confounding-variable trap.',
+      wrong:'Click "Reveal the confounder" above to see what\'s really driving both lines.'},
+    anscombe: {q:'Both datasets have r ≈ 0.816. Do they look the same when you actually plot them?', opts:[['no','No — very different shapes'],['yes','Yes, identical shapes']], correct:'no',
+      right:'Right — Dataset III\'s correlation is driven almost entirely by one point. Same r, completely different story. Always plot the data.',
+      wrong:'Look closely at the two mini scatterplots above — one is roughly linear, the other has a single point doing all the work.'}
+  };
+
+  function buildQuiz(key) {
+    const qz = QUIZZES[key];
+    document.getElementById('r4q').textContent = qz.q;
+    const optsWrap = document.getElementById('r4opts');
+    optsWrap.innerHTML='';
+    qz.opts.forEach(([val,label]) => {
+      const d = document.createElement('div'); d.className='opt'; d.dataset.v = val; d.textContent = label;
+      d.onclick = () => {
+        optsWrap.querySelectorAll('.opt').forEach(o=>o.classList.remove('correct','incorrect'));
+        const fb = document.getElementById('r4feedback');
+        if (val === qz.correct) { d.classList.add('correct'); fb.className='feedback right'; fb.textContent = qz.right; }
+        else { d.classList.add('incorrect'); optsWrap.querySelector(`[data-v="${qz.correct}"]`).classList.add('correct'); fb.className='feedback wrong'; fb.textContent = qz.wrong; }
+      };
+      optsWrap.appendChild(d);
+    });
+    document.getElementById('r4feedback').textContent='';
+  }
+
+  function refresh() {
+    ['r4strong','r4none','r4confound','r4anscombe'].forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById('r4revealwrap').style.display = r4Preset==='confound' ? 'flex' : 'none';
+    const main = document.getElementById('r4main');
+    const readout = document.getElementById('r4readout');
+    readout.innerHTML='';
+    if (r4Preset==='strong' || r4Preset==='none') {
+      document.getElementById(r4Preset==='strong'?'r4strong':'r4none').classList.add('active');
+      const preset = PRESETS[r4Preset];
+      renderScatter(main, preset.x, preset.y);
+      const r = pearsonR(preset.x, preset.y);
+      readout.innerHTML = `<div class="stat"><span class="val">${r.toFixed(3)}</span><span class="lbl">Pearson r</span></div>`;
+      document.getElementById('r4note').textContent = preset.note;
+    } else if (r4Preset==='confound') {
+      document.getElementById('r4confound').classList.add('active');
+      renderConfounder(main, confoundRevealed);
+      document.getElementById('r4note').textContent = confoundRevealed
+        ? 'Temperature (gray dashed) rises and falls right along with both — it\'s driving both series, and neither causes the other.'
+        : 'Both lines track each other closely across the year. Click "Reveal the confounder" to see the variable actually driving both.';
+    } else if (r4Preset==='anscombe') {
+      document.getElementById('r4anscombe').classList.add('active');
+      renderAnscombe(main);
+      document.getElementById('r4note').textContent = 'Both datasets share the same mean, same r ≈ 0.816, and the same regression line — but one is roughly linear and the other is a straight line plus a single outlier. This is why Lecture 5 says: plot before you trust a summary number.';
+    }
+    buildQuiz(r4Preset);
+  }
+  document.getElementById('r4strong').onclick = () => { r4Preset='strong'; refresh(); };
+  document.getElementById('r4none').onclick = () => { r4Preset='none'; refresh(); };
+  document.getElementById('r4confound').onclick = () => { r4Preset='confound'; confoundRevealed=false; refresh(); };
+  document.getElementById('r4anscombe').onclick = () => { r4Preset='anscombe'; refresh(); };
+  document.getElementById('r4reveal').onclick = () => { confoundRevealed = !confoundRevealed; document.getElementById('r4reveal').textContent = confoundRevealed ? 'Hide the confounder' : 'Reveal the confounder'; refresh(); };
+  refresh();
+}
+
+/* ---------- Summary ---------- */
+function renderSummary() {
+  const p = document.createElement('div'); p.className='panel'; p.id='summaryPanel';
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <p class="lede">Quick reference — the same four ideas you'll use starting in Lecture 6 and Lecture 7.</p>
+    <table>
+      <tr><th>Concept</th><th>Watch out for</th><th>Shows up again in</th></tr>
+      <tr><td><strong>Mean vs. median</strong></td><td>Mean is pulled by outliers; median mostly isn't.</td><td>Lecture 6 <code>StandardScaler</code> centers on the mean.</td></tr>
+      <tr><td><strong>Std dev vs. IQR</strong></td><td>A few extreme points can triple the std dev.</td><td>Lecture 7 squared-error loss is outlier-sensitive.</td></tr>
+      <tr><td><strong>Skew</strong></td><td>Mean &gt; median = right-skew; mean &lt; median = left-skew.</td><td>Lecture 7's <code>log1p()</code> transform on <code>resolution_time_hours</code>.</td></tr>
+      <tr><td><strong>Correlation &ne; causation</strong></td><td>A confounder can drive two unrelated-seeming things together.</td><td>Lecture 5's borough complaint-count finding; every EDA step from here on.</td></tr>
+    </table>
+    <div class="controls" style="margin-top:20px;">
+      <button class="btn-primary" id="restartBtn">Restart from the beginning</button>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+  document.getElementById('restartBtn').onclick = () => { current = 0; render(); };
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label:'Round 1 — Mean, Median & Mode', render:renderRound1},
+  {label:'Round 2 — Spread: Std Dev & IQR', render:renderRound2},
+  {label:'Round 3 — Distribution Shape & Skew', render:renderRound3},
+  {label:'Round 4 — Correlation vs. Causation', render:renderRound4},
+  {label:'Recap', render:renderSummary}
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
