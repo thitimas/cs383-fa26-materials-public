@@ -47,6 +47,33 @@ A few things every project needs to satisfy:
 - Include the **source link** in your notebook
 - Briefly describe the dataset's **provenance** — who collected it, when, and for what original purpose
 
+### Gathering data at scale
+
+You're welcome to pull a genuinely large dataset yourself rather than working from a single static file —
+in fact, this often makes for a stronger project, since assembling the data *is* real work worth showing.
+
+The most reliable way to do this is the same pattern used throughout this course: a public agency API on
+the Socrata platform (NYC Open Data and many state/city portals run on this). A single request usually
+caps out around 1,000-50,000 rows depending on the endpoint, so pulling a full dataset means paginating
+with `$limit` and `$offset` in a loop, not one giant request. Registering for a free Socrata app token is
+worth doing if you're pulling a lot of data — unauthenticated requests get throttled harder.
+
+Once you've pulled it, save it to a local CSV and read from that file for the rest of your notebook,
+rather than re-querying the API on every run — the same live-pull-with-local-fallback pattern you've seen
+in every lecture this semester.
+
+If your full pull ends up large (hundreds of thousands of rows or more), keep it as your genuine "collected
+data" for Step 2, then document an explicit, reasoned sample before modeling in Step 5 — collect big, model
+small, and say so directly in your notebook. Don't discard the scale of what you gathered just because you
+have to downsample it later; the full pull is still real evidence of the collection work.
+
+**A caution on web scraping:** pulling from a documented, official API (like Socrata above) is fine.
+Scraping raw HTML from an arbitrary website is a different thing — it raises real terms-of-service and
+legal questions depending on the site, it's fragile (a single layout change breaks your whole pipeline),
+and it isn't a tool this course has taught you. If your project idea seems to require scraping a page
+that has no API, talk to your instructor before building around it — there's often an official data
+source underneath that you just haven't found yet.
+
 ---
 
 ## Notebook requirements, step by step
