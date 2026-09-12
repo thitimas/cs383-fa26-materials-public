@@ -125,11 +125,11 @@
 /* ---------- data (verified) ---------- */
 const JORDAN = { name: "Jordan", age: 24, income: 32000 };
 const ROSTER = [
-  { name: "Amir",  age: 23, income: 29000 },
+  { name: "Diego", age: 26, income: 60000 },
+  { name: "Amir",  age: 22, income: 85000 },
   { name: "Wendy", age: 55, income: 31000 },
-  { name: "Diego", age: 25, income: 150000 },
+  { name: "Sofia", age: 50, income: 35000 },
   { name: "Priya", age: 45, income: 95000 },
-  { name: "Grace", age: 60, income: 88000 },
   { name: "Malik", age: 23, income: 250000 },
 ];
 
@@ -318,7 +318,8 @@ function renderRound3() {
   const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
   renderBarChart(document.getElementById('scaledChart'), scaled, {logScale: false, fmt: v => v.toFixed(2)});
 
-  document.getElementById('scaledWinnerCallout').innerHTML = `<strong>After scaling, the closest match is ${winner.name}</strong> (age ${winner.age}, income $${winner.income.toLocaleString()}) &mdash; only ${Math.abs(winner.age-JORDAN.age)} year(s) apart from Jordan, and a similar income bracket too. ${rawWinner.name}, last round's "winner," is now ranked #${scaled.findIndex(r=>r.name===rawWinner.name)+1}.`;
+  const winnerAgeGap = Math.abs(winner.age-JORDAN.age);
+  document.getElementById('scaledWinnerCallout').innerHTML = `<strong>After scaling, the closest match is ${winner.name}</strong> (age ${winner.age}, income $${winner.income.toLocaleString()}) &mdash; only ${winnerAgeGap} year${winnerAgeGap===1?'':'s'} apart from Jordan, and a much closer income bracket than most of the roster. ${rawWinner.name}, last round's "winner," is now ranked #${scaled.findIndex(r=>r.name===rawWinner.name)+1}.`;
 
   if (round1Guess) {
     const cb = document.getElementById('guessCallback');
@@ -354,30 +355,32 @@ function renderRound3() {
 function renderRound4() {
   const p = document.createElement('div'); p.className = 'panel';
   const scaled = scaledDistances();
-  const diego = scaled.find(r => r.name === 'Diego');
-  const diegoRawRank = rawDistances().findIndex(r => r.name === 'Diego') + 1;
-  const diegoScaledRank = scaled.findIndex(r => r.name === 'Diego') + 1;
+  const winner = scaled[0];
+  const amir = scaled.find(r => r.name === 'Amir');
+  const wendy = scaled.find(r => r.name === 'Wendy');
 
   p.innerHTML = `
     <h2>4 &middot; Why This Matters</h2>
-    <p class="lede">One more thing worth noticing: <strong>Diego</strong> is the same age as Jordan
-    (25 vs. 24) but earns $118,000 more. By raw numbers he ranked <strong>#${diegoRawRank}</strong> out of 6
-    &mdash; basically ignored, because his income gap is so large. Once everyone is on comparable scale,
-    he jumps to <strong>#${diegoScaledRank}</strong>. Being the same age started to actually count for
-    something.</p>
+    <p class="lede">Notice what <strong>didn't</strong> win, once everyone was on comparable scale.
+    <strong>Amir</strong> has a smaller age gap from Jordan than ${winner.name} does (2 years either way),
+    but a much bigger income gap ($53,000 vs. $28,000) — he still lost. <strong>Wendy</strong> has an
+    almost-identical income to Jordan ($1,000 apart), but she's 31 years older — she still lost too.
+    ${winner.name} won by being the best <em>balance</em> of both, not by being the closest match on
+    either single feature.</p>
     <div class="quiz">
-      <div class="q">Why did Diego move up, even though his income is still $118,000 different from Jordan's?</div>
+      <div class="q">Why didn't Amir win, even though his age gap was just as small as ${winner.name}'s?</div>
       <div class="options">
-        <div class="opt" data-v="right">Scaling didn't erase the income gap — it just stopped that one feature from automatically outweighing every other feature</div>
-        <div class="opt" data-v="wrong">Scaling made Diego's income equal to Jordan's</div>
+        <div class="opt" data-v="right">His income gap was still large relative to everyone else's, and scaling doesn't erase real differences — it just stops one feature from automatically drowning out the other</div>
+        <div class="opt" data-v="wrong">Scaling only looks at age, not income</div>
       </div>
       <div class="feedback" id="r4feedback"></div>
     </div>
     <div class="callout"><strong>The big idea:</strong> a model that measures distance between rows &mdash;
     like k-NN, which you'll meet in Week 8 &mdash; can't tell "important" from "just has bigger numbers."
-    Without scaling, whichever feature happens to be measured in bigger units wins by default, every time.
-    <code>StandardScaler</code> is how you make sure every feature gets judged on what it actually says,
-    not on the units it happens to be measured in.</div>
+    Without scaling, whichever feature happens to be measured in bigger units wins by default, every time
+    (that's what put Wendy in first place in Round 2). <code>StandardScaler</code> is how you make sure
+    every feature gets judged on what it actually says, on both dimensions at once, not on the units it
+    happens to be measured in.</div>
     <p class="lede" style="margin-top:18px; text-align:center;">
     <strong>Now open <code>lect06_feature_engineering.ipynb</code></strong> — Part 3 does exactly this,
     for real, on NYC 311 data.</p>
@@ -391,12 +394,12 @@ function renderRound4() {
       if (opt.dataset.v === 'right') {
         opt.classList.add('correct');
         fb.className = 'feedback right';
-        fb.textContent = 'Right — scaling doesn\'t change what the data says, only how much each feature is allowed to dominate the calculation just because of its units.';
+        fb.textContent = `Right — scaling doesn't make a $53,000 gap disappear. It just means that gap is measured on the same footing as everyone else's age gap, instead of automatically overwhelming it the way it did back in Round 2.`;
       } else {
         opt.classList.add('incorrect');
         document.querySelector('.quiz .opt[data-v="right"]').classList.add('correct');
         fb.className = 'feedback wrong';
-        fb.textContent = 'Not quite — Diego\'s income is still $118,000 different. What changed is how much that difference is allowed to dominate the distance calculation.';
+        fb.textContent = 'Not quite — scaling is applied to both features. Amir lost because, even scaled, his income gap was still comparatively large — scaling puts both features on the same footing, it doesn\'t ignore either one.';
       }
     };
   });
