@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 6 Unplugged Activity</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; margin: 16px 0; }
+  .person-card {
+    background: #f5f4ef; border-radius: 12px; padding: 14px 12px; text-align: center;
+    border-top: 6px solid #7d93ad;
+  }
+  .person-card.target { background: #fff8e8; border-top-color: var(--target-color); }
+  .person-card.selected { outline: 3px solid var(--accent); }
+  .person-card .name { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .person-card .stat-line { font-size: 13px; color: var(--muted); }
+  .person-card button { margin-top: 10px; width: 100%; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: #e2e0d8; color: var(--ink); }
+  .btn-secondary.active { background: var(--ink); color: #fff; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+  .btn-pick.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 6 Unplugged Activity — Why Scale?</h1>
+  <p>No coding yet. Before we open the notebook, let's figure out for ourselves why "comparable scale"
+  matters — using two things everyone already has a feel for: age and income.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Unplugged warm-up for Lecture 6 (Feature Engineering)
+</footer>
+
+<script>
+/* ---------- data (verified) ---------- */
+const JORDAN = { name: "Jordan", age: 24, income: 32000 };
+const ROSTER = [
+  { name: "Amir",  age: 23, income: 29000 },
+  { name: "Wendy", age: 55, income: 31000 },
+  { name: "Diego", age: 25, income: 150000 },
+  { name: "Priya", age: 45, income: 95000 },
+  { name: "Grace", age: 60, income: 88000 },
+  { name: "Malik", age: 23, income: 250000 },
+];
+
+function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function popStd(arr) { const m = mean(arr); return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length); }
+
+function rawDistances() {
+  return ROSTER.map(p => ({
+    ...p,
+    dist: Math.sqrt((p.age - JORDAN.age)**2 + (p.income - JORDAN.income)**2)
+  })).sort((a,b) => a.dist - b.dist);
+}
+
+function scaledDistances() {
+  const allAges = [JORDAN.age, ...ROSTER.map(p=>p.age)];
+  const allIncomes = [JORDAN.income, ...ROSTER.map(p=>p.income)];
+  const ageMean = mean(allAges), ageStd = popStd(allAges);
+  const incMean = mean(allIncomes), incStd = popStd(allIncomes);
+  const jAgeZ = (JORDAN.age - ageMean) / ageStd;
+  const jIncZ = (JORDAN.income - incMean) / incStd;
+  return ROSTER.map(p => {
+    const ageZ = (p.age - ageMean) / ageStd;
+    const incZ = (p.income - incMean) / incStd;
+    return { ...p, ageZ, incZ, dist: Math.sqrt((ageZ - jAgeZ)**2 + (incZ - jIncZ)**2) };
+  }).sort((a,b) => a.dist - b.dist);
+}
+
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function renderBarChart(container, rows, opts) {
+  container.innerHTML = '';
+  const width = 680, rowH = 40, padL = 90, padR = 90, top = 10;
+  const height = rows.length * rowH + top * 2;
+  const maxVal = Math.max(...rows.map(r => r.dist));
+  const s = svg('svg', {width, height, viewBox: `0 0 ${width} ${height}`});
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    const barMaxW = width - padL - padR;
+    const barW = opts.logScale
+      ? (Math.log10(r.dist + 1) / Math.log10(maxVal + 1)) * barMaxW
+      : (r.dist / maxVal) * barMaxW;
+    const label = svg('text', {x: padL - 10, y: y + rowH/2 + 5, 'text-anchor':'end', 'font-size':13, 'font-weight':700, fill:'var(--ink,#1f2430)'});
+    label.textContent = r.name;
+    s.appendChild(label);
+    s.appendChild(svg('rect', {x: padL, y: y + 8, width: Math.max(barW,2), height: rowH - 16, rx: 5, fill: r.highlight ? '#2b6cb0' : '#a9c2dd'}));
+    const valLabel = svg('text', {x: padL + barW + 8, y: y + rowH/2 + 5, 'font-size':12, fill:'#5b6472'});
+    valLabel.textContent = opts.fmt(r.dist);
+    s.appendChild(valLabel);
+  });
+  container.appendChild(s);
+}
+
+/* ---------- Round 1: meet the roster, make a guess ---------- */
+let round1Guess = null;
+
+function renderRound1() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>1 &middot; Meet the Roster</h2>
+    <p class="lede">Here are six people, described by just two numbers: age, and annual income. One more
+    person — <strong>Jordan</strong> — is who we want to find a match for.</p>
+    <div class="roster-grid" id="targetCard"></div>
+    <p class="lede" style="margin-top:18px;"><strong>Before any math:</strong> using just your gut sense of
+    age and income, who do you think is most similar to Jordan?</p>
+    <div class="roster-grid" id="rosterGrid"></div>
+    <div class="callout" id="guessCallout" style="display:none;"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+
+  const targetGrid = document.getElementById('targetCard');
+  targetGrid.innerHTML = `
+    <div class="person-card target">
+      <div class="name">${JORDAN.name} (target)</div>
+      <div class="stat-line">Age: ${JORDAN.age}</div>
+      <div class="stat-line">Income: $${JORDAN.income.toLocaleString()}</div>
+    </div>
+  `;
+
+  const grid = document.getElementById('rosterGrid');
+  grid.innerHTML = '';
+  ROSTER.forEach(person => {
+    const card = document.createElement('div');
+    card.className = 'person-card' + (round1Guess === person.name ? ' selected' : '');
+    card.innerHTML = `
+      <div class="name">${person.name}</div>
+      <div class="stat-line">Age: ${person.age}</div>
+      <div class="stat-line">Income: $${person.income.toLocaleString()}</div>
+      <button class="btn-pick ${round1Guess === person.name ? 'chosen' : ''}" data-name="${person.name}">
+        ${round1Guess === person.name ? 'My guess' : 'Pick this person'}
+      </button>
+    `;
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('.btn-pick').forEach(btn => {
+    btn.onclick = () => {
+      round1Guess = btn.dataset.name;
+      renderRound1();
+    };
+  });
+
+  if (round1Guess) {
+    const callout = document.getElementById('guessCallout');
+    callout.style.display = 'block';
+    callout.className = 'callout warm';
+    callout.innerHTML = `<strong>Locked in:</strong> you guessed <strong>${round1Guess}</strong>. Keep that in mind — we'll come back to it once the numbers are in.`;
+  }
+}
+
+/* ---------- Round 2: raw distance ---------- */
+function renderRound2() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const raw = rawDistances();
+  const winner = raw[0];
+  raw.forEach(r => r.highlight = (r.name === winner.name));
+
+  p.innerHTML = `
+    <h2>2 &middot; Measure It With Raw Numbers</h2>
+    <p class="lede">A simple way to measure "how similar" two people are: treat age and income as two
+    coordinates, and measure the straight-line distance between them &mdash; smaller distance means
+    more similar. Let's actually compute it, using the raw numbers exactly as they're reported.</p>
+    <div id="rawChart"></div>
+    <p class="small-note">Distance shown on a log scale so every bar is visible &mdash; the gap is far
+    bigger than it looks even here.</p>
+    <div class="callout" id="rawWinnerCallout"></div>
+    <div class="quiz" id="r2quiz">
+      <div class="q">Does it feel right that ${winner.name} (age ${winner.age}) is the "most similar" person to Jordan (age ${JORDAN.age})?</div>
+      <div class="options">
+        <div class="opt" data-v="no">No &mdash; that's a big age gap</div>
+        <div class="opt" data-v="yes">Yes, that seems right</div>
+      </div>
+      <div class="feedback" id="r2feedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+  renderBarChart(document.getElementById('rawChart'), raw, {logScale: true, fmt: v => v >= 1000 ? `${Math.round(v).toLocaleString()}` : v.toFixed(1)});
+
+  document.getElementById('rawWinnerCallout').innerHTML = `<strong>By raw numbers, the closest match is ${winner.name}</strong> (age ${winner.age}, income $${winner.income.toLocaleString()}) &mdash; ${winner.dist.toFixed(1)} units away. Jordan is ${JORDAN.age}. That's a ${Math.abs(winner.age-JORDAN.age)}-year age gap.`;
+
+  document.querySelectorAll('#r2quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r2quiz .opt').forEach(o=>o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r2feedback');
+      if (opt.dataset.v === 'no') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = `Right — it shouldn't feel right. Income differences here run into the tens of thousands, while age differences only run into the tens. When you compute distance on raw numbers, income completely dominates the calculation, whether or not it's actually more important for "similarity." ${winner.name}'s income just happened to land close to Jordan's.`;
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#r2quiz .opt[data-v="no"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = `Look at the age gap again — ${Math.abs(winner.age-JORDAN.age)} years apart. The math says "most similar" but that's really just income doing all the work.`;
+      }
+    };
+  });
+}
+
+/* ---------- Round 3: scale, then recompute ---------- */
+function renderRound3() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const scaled = scaledDistances();
+  const winner = scaled[0];
+  scaled.forEach(r => r.highlight = (r.name === winner.name));
+  const rawWinner = rawDistances()[0];
+
+  p.innerHTML = `
+    <h2>3 &middot; Put Both Features on the Same Footing</h2>
+    <p class="lede"><strong>Standardizing</strong> (the z-score idea) rescales both age and income so each
+    has a mean of 0 and a standard deviation of 1 &mdash; the same units, the same footing, neither one
+    automatically winning just because its raw numbers happen to be bigger.</p>
+    <div id="scaledChart"></div>
+    <div class="callout" id="scaledWinnerCallout"></div>
+    <div class="quiz" id="r3quiz">
+      <div class="q">After scaling, who is most similar to Jordan?</div>
+      <div class="options">
+        ${ROSTER.map(pp => `<div class="opt" data-v="${pp.name}">${pp.name}</div>`).join('')}
+      </div>
+      <div class="feedback" id="r3feedback"></div>
+    </div>
+    <div class="callout" id="guessCallback" style="display:none;"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+  renderBarChart(document.getElementById('scaledChart'), scaled, {logScale: false, fmt: v => v.toFixed(2)});
+
+  document.getElementById('scaledWinnerCallout').innerHTML = `<strong>After scaling, the closest match is ${winner.name}</strong> (age ${winner.age}, income $${winner.income.toLocaleString()}) &mdash; only ${Math.abs(winner.age-JORDAN.age)} year(s) apart from Jordan, and a similar income bracket too. ${rawWinner.name}, last round's "winner," is now ranked #${scaled.findIndex(r=>r.name===rawWinner.name)+1}.`;
+
+  if (round1Guess) {
+    const cb = document.getElementById('guessCallback');
+    cb.style.display = 'block';
+    if (round1Guess === winner.name) {
+      cb.className = 'callout';
+      cb.innerHTML = `<strong>Your Round 1 gut guess was ${round1Guess} — and that's exactly what the scaled math says too.</strong> Your instinct was already accounting for "comparable scale" without a formula; the raw numbers in Round 2 were the ones getting it wrong.`;
+    } else {
+      cb.className = 'callout';
+      cb.innerHTML = `<strong>Your Round 1 gut guess was ${round1Guess}.</strong> The scaled math says ${winner.name} is closest. Either way, compare your gut answer to what raw distance picked back in Round 2 (${rawWinner.name}) — gut instinct and scaled math tend to land much closer to each other than raw, unscaled numbers do.`;
+    }
+  }
+
+  document.querySelectorAll('#r3quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r3quiz .opt').forEach(o=>o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r3feedback');
+      if (opt.dataset.v === winner.name) {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = `Right — ${winner.name} is closest once age and income are on comparable footing.`;
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector(`#r3quiz .opt[data-v="${winner.name}"]`).classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = `Check the chart above — ${winner.name} has the smallest scaled distance.`;
+      }
+    };
+  });
+}
+
+/* ---------- Round 4: why it matters ---------- */
+function renderRound4() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const scaled = scaledDistances();
+  const diego = scaled.find(r => r.name === 'Diego');
+  const diegoRawRank = rawDistances().findIndex(r => r.name === 'Diego') + 1;
+  const diegoScaledRank = scaled.findIndex(r => r.name === 'Diego') + 1;
+
+  p.innerHTML = `
+    <h2>4 &middot; Why This Matters</h2>
+    <p class="lede">One more thing worth noticing: <strong>Diego</strong> is the same age as Jordan
+    (25 vs. 24) but earns $118,000 more. By raw numbers he ranked <strong>#${diegoRawRank}</strong> out of 6
+    &mdash; basically ignored, because his income gap is so large. Once everyone is on comparable scale,
+    he jumps to <strong>#${diegoScaledRank}</strong>. Being the same age started to actually count for
+    something.</p>
+    <div class="quiz">
+      <div class="q">Why did Diego move up, even though his income is still $118,000 different from Jordan's?</div>
+      <div class="options">
+        <div class="opt" data-v="right">Scaling didn't erase the income gap — it just stopped that one feature from automatically outweighing every other feature</div>
+        <div class="opt" data-v="wrong">Scaling made Diego's income equal to Jordan's</div>
+      </div>
+      <div class="feedback" id="r4feedback"></div>
+    </div>
+    <div class="callout"><strong>The big idea:</strong> a model that measures distance between rows &mdash;
+    like k-NN, which you'll meet in Week 8 &mdash; can't tell "important" from "just has bigger numbers."
+    Without scaling, whichever feature happens to be measured in bigger units wins by default, every time.
+    <code>StandardScaler</code> is how you make sure every feature gets judged on what it actually says,
+    not on the units it happens to be measured in.</div>
+    <p class="lede" style="margin-top:18px; text-align:center;">
+    <strong>Now open <code>lect06_feature_engineering.ipynb</code></strong> — Part 3 does exactly this,
+    for real, on NYC 311 data.</p>
+  `;
+  const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
+
+  document.querySelectorAll('.quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('.quiz .opt').forEach(o=>o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r4feedback');
+      if (opt.dataset.v === 'right') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = 'Right — scaling doesn\'t change what the data says, only how much each feature is allowed to dominate the calculation just because of its units.';
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('.quiz .opt[data-v="right"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = 'Not quite — Diego\'s income is still $118,000 different. What changed is how much that difference is allowed to dominate the distance calculation.';
+      }
+    };
+  });
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label: 'Round 1 — Meet the Roster', render: renderRound1},
+  {label: 'Round 2 — Raw Numbers', render: renderRound2},
+  {label: 'Round 3 — Scaled Numbers', render: renderRound3},
+  {label: 'Round 4 — Why It Matters', render: renderRound4},
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
