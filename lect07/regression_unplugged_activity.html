@@ -163,6 +163,24 @@ function mulberry32(seed) {
 
 const OLS = olsFit(HOURS, SCORES);
 
+function niceTicks(min, max, targetCount) {
+  if (max <= min) return [min];
+  const range = max - min;
+  const roughStep = range / targetCount;
+  const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const norm = roughStep / mag;
+  const step = (norm < 1.5) ? mag : (norm < 3) ? 2*mag : (norm < 7) ? 5*mag : 10*mag;
+  const start = Math.ceil(min/step - 1e-9) * step;
+  const ticks = [];
+  for (let t = start; t <= max + step*1e-6; t += step) ticks.push(Math.round(t*1e6)/1e6);
+  return ticks;
+}
+function fmtTick(v) {
+  let s = v.toFixed(2);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s;
+}
+
 function svg(tag, attrs) {
   const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
   for (const k in attrs) el.setAttribute(k, attrs[k]);
@@ -198,6 +216,21 @@ function renderRegressionPlot(container, cfg) {
   xl.textContent = xLabel; s.appendChild(xl);
   const yl = svg('text', {x:16, y: padT+plotH/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 16 ${padT+plotH/2})`});
   yl.textContent = yLabel; s.appendChild(yl);
+
+  niceTicks(x0, x1, 5).forEach(t => {
+    const tx = sx(t);
+    s.appendChild(svg('line', {x1:tx, y1:padT+plotH, x2:tx, y2:padT+plotH+5, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:tx, y:padT+plotH+18, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t);
+    s.appendChild(lbl);
+  });
+  niceTicks(y0, y1v, 5).forEach(t => {
+    const ty = sy(t);
+    s.appendChild(svg('line', {x1:padL-5, y1:ty, x2:padL, y2:ty, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:padL-9, y:ty+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t);
+    s.appendChild(lbl);
+  });
 
   lines.forEach(l => {
     const ly1 = l.slope*x0 + l.intercept, ly2 = l.slope*x1 + l.intercept;
