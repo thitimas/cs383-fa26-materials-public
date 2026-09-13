@@ -102,6 +102,14 @@
   .calc-table tr.calc-total td { font-weight: 800; color: var(--accent); background: #eef4fb; border-top: 2px solid var(--accent); }
   .calc-table tr.calc-total td:first-child { color: var(--muted); font-weight: 700; text-align: right; }
 
+  .formula-ref { margin-top: 14px; padding: 20px; border-radius: 12px; background: #f5f4ef; text-align: center; }
+  .formula-line { display: flex; align-items: baseline; justify-content: center; gap: 10px; font-size: 19px; font-weight: 700; color: var(--ink); flex-wrap: wrap; }
+  .formula-lhs { color: var(--accent); }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 15px; font-weight: 600; line-height: 1.5; }
+  .frac-num { padding: 0 8px 4px; border-bottom: 2px solid var(--ink); }
+  .frac-den { padding: 4px 8px 0; }
+  .bar { text-decoration: overline; text-decoration-thickness: 1.5px; }
+
   .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
 
   footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
@@ -700,7 +708,17 @@ function renderFormula() {
     actually <strong>learns</strong> its slope and intercept straight from the data — solving for the
     minimum of SSR directly, instead of guessing and checking.</p>
 
-    <p class="lede" style="margin-top:0;">For every student, ask two questions: how far are their hours
+    <div class="callout" style="margin-top:0;">
+      <strong>This is still "minimize the loss function"</strong> — same idea as the squaring you did
+      last round. SSR turns out to be a smooth, bowl-shaped curve as you vary b1 and b0, so calculus can
+      jump straight to its lowest point with algebra instead of searching for it. Models you'll meet later
+      in the course — logistic regression, neural networks — minimize their own loss functions the same
+      way in spirit, but usually can't solve for the minimum directly. They search for it step by step
+      instead, using something called <em>gradient descent</em> — basically an automated, smarter version
+      of the slope-hunting you just did by hand.
+    </div>
+
+    <p class="lede">For every student, ask two questions: how far are their hours
     from the class average, and how far is their score from the class average?</p>
 
     <div class="calc-table-wrap">
@@ -747,7 +765,29 @@ function renderFormula() {
       b0 just anchors the line so it passes through the class average point (${OLS.xbar.toFixed(2)} hours,
       ${OLS.ybar.toFixed(2)} score) at the slope you just found.</span>
     </div>
-    <div class="callout" style="margin-top:12px;">
+    <p class="lede" style="margin-top:20px;">In symbols, for reference — this is exactly what the table
+    above computed:</p>
+    <div class="formula-ref">
+      <div class="formula-line">
+        <span class="formula-lhs">b<sub>1</sub></span>
+        <span>=</span>
+        <span class="frac">
+          <span class="frac-num">&Sigma;<sub>i</sub> (x<sub>i</sub> &minus; <span class="bar">x</span>)(y<sub>i</sub> &minus; <span class="bar">y</span>)</span>
+          <span class="frac-den">&Sigma;<sub>i</sub> (x<sub>i</sub> &minus; <span class="bar">x</span>)<sup>2</sup></span>
+        </span>
+      </div>
+      <div class="formula-line" style="margin-top:16px;">
+        <span class="formula-lhs">b<sub>0</sub></span>
+        <span>=</span>
+        <span class="bar">y</span><span>&minus; b<sub>1</sub><span class="bar">x</span></span>
+      </div>
+      <p class="small-note" style="margin-top:14px;">x<sub>i</sub> and y<sub>i</sub> are one student's hours
+      and score, <span class="bar">x</span> and <span class="bar">y</span> are the class averages, and
+      &Sigma;<sub>i</sub> means "add this up across every student i" — exactly the two totals you just
+      computed in the table.</p>
+    </div>
+
+    <div class="callout" style="margin-top:16px;">
       Plug in ${OLS.b1.toFixed(3)} and ${OLS.b0.toFixed(3)} and you get exactly the line you were hunting
       for last round — the data <em>learned</em> its own best-fit line, no trial and error required.
     </div>
