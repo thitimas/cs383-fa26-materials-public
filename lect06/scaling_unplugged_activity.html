@@ -348,6 +348,20 @@ const ENCODING_CARDS = [
     transformWhy: 'Ordinal encoding again — the order is the whole point of this feature.' },
 ];
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+// Shuffled once per page load so nominal/ordinal cards aren't grouped
+// (grouping made the answer guessable from position alone). The render
+// order stays fixed across re-renders so cards don't jump around as
+// students answer.
+const ENCODING_ORDER = shuffle(ENCODING_CARDS);
+
 const encodingState = {};
 ENCODING_CARDS.forEach(c => { encodingState[c.name] = { typeAnswer: null, transformAnswer: null }; });
 
@@ -371,7 +385,7 @@ function renderEncoding() {
 
   const grid = document.getElementById('encodingGrid');
   grid.innerHTML = '';
-  ENCODING_CARDS.forEach(card => {
+  ENCODING_ORDER.forEach(card => {
     const st = encodingState[card.name];
     const typeDone = st.typeAnswer !== null;
     const transformDone = st.transformAnswer !== null;
