@@ -87,6 +87,13 @@
   .callout strong { color: var(--accent); }
   .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
 
+  .compare-table { margin-top: 16px; }
+  .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table th, .compare-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e0d8; }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+  .compare-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .compare-table tbody td { font-weight: 700; }
+
   .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
 
   footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
@@ -492,25 +499,38 @@ function renderResiduals() {
 /* ---------- Part 2, Round 2: why square it? (step-through simulation) ---------- */
 let squareStepIndex = 0;
 let squareMode = false; // false = raw residuals, true = squared
+let squareLine = 'best'; // 'best' = least-squares line, 'flat' = flat line through the average
 
-function residualAt(i) {
-  const x = HOURS[i], y = SCORES[i];
-  return y - (OLS.b0 + OLS.b1*x);
+const WHYSQ_LINES = {
+  best: { slope: OLS.b1, intercept: OLS.b0, color: '#2b6cb0', label: 'best-fit line' },
+  flat: { slope: 0, intercept: OLS.ybar, color: '#8859a3', label: 'flat line (ignores study hours)' },
+};
+
+function residualAt(i, lineKey) {
+  const L = WHYSQ_LINES[lineKey || squareLine];
+  return SCORES[i] - (L.intercept + L.slope*HOURS[i]);
 }
 
 function renderWhySquare() {
   const p = document.createElement('div'); p.className = 'panel';
   const n = HOURS.length;
+  const L = WHYSQ_LINES[squareLine];
   const revealed = Array.from({length: squareStepIndex}, (_,i) => i);
   const rawSum = revealed.reduce((acc,i) => acc + residualAt(i), 0);
   const sqSum = revealed.reduce((acc,i) => acc + residualAt(i)**2, 0);
   const currentSum = squareMode ? sqSum : rawSum;
   const done = squareStepIndex === n;
 
+  // deterministic reference values for the comparison table (both lines, both modes)
+  const bestRaw = rawResidSumFor(HOURS, SCORES, OLS.b0, OLS.b1);
+  const bestSSR = ssrFor(HOURS, SCORES, OLS.b0, OLS.b1);
+  const flatRaw = rawResidSumFor(HOURS, SCORES, OLS.ybar, 0);
+  const flatSSR = ssrFor(HOURS, SCORES, OLS.ybar, 0);
+
   p.innerHTML = `
     <h2>Part 2 &middot; Why Do We Square It?</h2>
-    <p class="lede">Click through each student's residual on the least-squares line and watch the running
-    total. ${squareMode
+    <p class="lede">Click through each student's residual on the <strong>${L.label}</strong> and watch the
+    running total. ${squareMode
       ? 'This round we\'re adding up the <strong>squared</strong> residual for each point.'
       : 'Right now we\'re adding up the <strong>raw</strong> residual for each point — positive above the line, negative below.'}</p>
     <div id="chart4"></div>
@@ -522,20 +542,39 @@ function renderWhySquare() {
     </div>
     <div class="controls">
       <button class="btn-nav" id="toggleSquare">${squareMode ? 'Switch Back to Raw Residuals' : 'Now Try Squaring Them'}</button>
+      <button class="btn-nav" id="toggleLine">${squareLine === 'best' ? 'Try the Flat Line Instead' : 'Back to the Best-Fit Line'}</button>
       <button class="btn-nav back" id="resetSteps">Reset</button>
     </div>
     ${done ? `<div class="callout ${squareMode ? 'warm' : ''}">
-      <strong>Final ${squareMode ? 'squared' : 'raw'} sum: ${currentSum.toFixed(2)}.</strong>
+      <strong>Final ${squareMode ? 'squared' : 'raw'} sum for the ${L.label}: ${currentSum.toFixed(2)}.</strong>
       ${squareMode
-        ? 'Every term was positive, so nothing canceled — this total (the SSR) actually reflects how well the line fits.'
-        : 'Practically zero — even though this is a genuinely good fit. Positive and negative residuals canceled each other out. Try squaring them with the button above.'}
+        ? (squareLine === 'best'
+            ? 'Every term was positive, so nothing canceled — this total (the SSR) actually reflects how well the line fits.'
+            : 'Every term was positive here too — and the total is huge. Squaring finally exposes how bad this line really is.')
+        : (squareLine === 'best'
+            ? 'Practically zero — even though this is a genuinely good fit. Positive and negative residuals canceled each other out.'
+            : 'Also practically zero — even though this line completely ignores study hours and is clearly a bad fit. Raw residuals cancel out no matter how good or bad the line is.')}
+      Try ${squareMode ? 'switching lines' : 'squaring them'} with the buttons above.
+    </div>
+    <div class="compare-table">
+      <table>
+        <thead><tr><th></th><th>Flat line</th><th>Best-fit line</th></tr></thead>
+        <tbody>
+          <tr><td>Raw residual sum</td><td>${flatRaw.toFixed(2)}</td><td>${bestRaw.toFixed(2)}</td></tr>
+          <tr><td>Squared residual sum (SSR)</td><td>${flatSSR.toFixed(1)}</td><td>${bestSSR.toFixed(1)}</td></tr>
+        </tbody>
+      </table>
+      <p class="small-note">Both lines' raw residuals cancel out to about zero — even the flat line that
+      completely ignores study hours. Raw sum can't tell a terrible fit from a great one. Only once you
+      square does the flat line's massive misses show up: SSR &asymp; ${flatSSR.toFixed(0)} vs. &asymp;
+      ${bestSSR.toFixed(0)} for the best-fit line.</p>
     </div>` : ''}
     ${done && !squareMode ? `
     <div class="quiz" id="squareQuiz">
-      <div class="q">A flat, clearly-worse line through this same average point would <em>also</em> raw-sum to zero. Why doesn't that happen once you square?</div>
+      <div class="q">Going only by "residuals sum to zero," could you tell the flat line and the best-fit line apart?</div>
       <div class="options">
-        <div class="opt" data-v="right">Squaring makes every term positive, so a bad line's bigger misses can't hide by canceling against smaller ones</div>
-        <div class="opt" data-v="wrong">Squaring only changes the line's slope, not the residuals</div>
+        <div class="opt" data-v="right">No — squaring makes every term positive, so a bad line's bigger misses can't hide by canceling against smaller ones</div>
+        <div class="opt" data-v="wrong">Yes — the flat line's raw sum should have come out different from the best-fit line's</div>
       </div>
       <div class="feedback" id="squareFeedback"></div>
     </div>` : ''}
@@ -549,14 +588,14 @@ function renderWhySquare() {
       r: i < squareStepIndex ? 6 : 4,
     })),
     xLabel: 'Study Hours per Week', yLabel: 'Exam Score',
-    lines: [{ slope: OLS.b1, intercept: OLS.b0, color:'#2b6cb0', width:2.5 }],
+    lines: [{ slope: L.slope, intercept: L.intercept, color: L.color, width:2.5 }],
     residualsFor: revealed.map(i => {
       const r = residualAt(i);
       const val = squareMode ? r*r : r;
       return {
         x: HOURS[i], y: SCORES[i],
         tag: squareMode ? val.toFixed(2) : `${r>=0?'+':''}${r.toFixed(2)}`,
-        color: squareMode ? '#2b6cb0' : (r < 0 ? '#a3302f' : '#2f9e56'),
+        color: squareMode ? L.color : (r < 0 ? '#a3302f' : '#2f9e56'),
       };
     }),
   });
@@ -564,6 +603,7 @@ function renderWhySquare() {
   document.getElementById('stepBack').onclick = () => { squareStepIndex = Math.max(0, squareStepIndex-1); renderWhySquare(); };
   document.getElementById('stepForward').onclick = () => { squareStepIndex = Math.min(n, squareStepIndex+1); renderWhySquare(); };
   document.getElementById('toggleSquare').onclick = () => { squareMode = !squareMode; squareStepIndex = 0; renderWhySquare(); };
+  document.getElementById('toggleLine').onclick = () => { squareLine = squareLine === 'best' ? 'flat' : 'best'; squareStepIndex = 0; renderWhySquare(); };
   document.getElementById('resetSteps').onclick = () => { squareStepIndex = 0; renderWhySquare(); };
 
   const quiz = document.getElementById('squareQuiz');
@@ -575,12 +615,12 @@ function renderWhySquare() {
         if (opt.dataset.v === 'right') {
           opt.classList.add('correct');
           fb.className = 'feedback right';
-          fb.textContent = 'Right — once every term is positive, a line with big misses can\'t disguise them by pairing with equally-big misses in the other direction. That\'s exactly what you just watched happen switching from raw to squared.';
+          fb.textContent = 'Right — both lines\' raw residuals cancel to about zero, good fit or bad. Once every term is positive, a bad line\'s bigger misses can\'t disguise themselves anymore — that\'s exactly the gap you saw in the comparison table above.';
         } else {
           opt.classList.add('incorrect');
           quiz.querySelector('.opt[data-v="right"]').classList.add('correct');
           fb.className = 'feedback wrong';
-          fb.textContent = 'Not quite — the line doesn\'t change at all here. What changes is how we combine the residuals: squared terms can\'t cancel, since none of them are negative.';
+          fb.textContent = 'Actually the opposite — both lines raw-sum to about zero, as the comparison table above shows. Raw sum alone can\'t separate a great fit from a terrible one; squaring is what makes the difference visible.';
         }
       };
     });
