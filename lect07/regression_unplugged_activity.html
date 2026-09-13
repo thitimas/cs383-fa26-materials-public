@@ -306,6 +306,65 @@ function renderRegressionPlot(container, cfg) {
   container.appendChild(s);
 }
 
+/* SSR(slope) = a*slope^2 - 2*b*slope + c, an upward parabola (the "bowl") since a > 0.
+   Draws the curve plus a marker at its minimum, (b/a, f(b/a)). */
+function renderBowlChart(container, cfg) {
+  container.innerHTML = '';
+  const { a, b, c, xMin, xMax, xLabel, yLabel } = cfg;
+  const bestX = b / a;
+  const f = (x) => a*x*x - 2*b*x + c;
+  const bestY = f(bestX);
+  const width = 640, height = 320;
+  const padL = 56, padR = 26, padT = 24, padB = 46;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+
+  const N = 80;
+  const xs = Array.from({length: N+1}, (_,i) => xMin + (xMax-xMin)*i/N);
+  const ys = xs.map(f);
+  let y0 = Math.min(...ys, bestY), y1v = Math.max(...ys, bestY);
+  const yPad = (y1v-y0)*0.12 || 1;
+  y0 -= yPad; y1v += yPad;
+  const x0 = xMin, x1 = xMax;
+
+  const sx = x => padL + (x-x0)/(x1-x0)*plotW;
+  const sy = y => padT + plotH - (y-y0)/(y1v-y0)*plotH;
+
+  const s = svg('svg', {width, height, viewBox: `0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padL, y1:padT, x2:padL, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  const xl = svg('text', {x: padL+plotW/2, y: height-10, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = xLabel; s.appendChild(xl);
+  const yl = svg('text', {x:16, y: padT+plotH/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 16 ${padT+plotH/2})`});
+  yl.textContent = yLabel; s.appendChild(yl);
+
+  niceTicks(x0, x1, 5).forEach(t => {
+    const tx = sx(t);
+    s.appendChild(svg('line', {x1:tx, y1:padT+plotH, x2:tx, y2:padT+plotH+5, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:tx, y:padT+plotH+18, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t);
+    s.appendChild(lbl);
+  });
+  niceTicks(y0, y1v, 5).forEach(t => {
+    const ty = sy(t);
+    s.appendChild(svg('line', {x1:padL-5, y1:ty, x2:padL, y2:ty, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:padL-9, y:ty+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t);
+    s.appendChild(lbl);
+  });
+
+  const d = xs.map((x,i) => `${i===0?'M':'L'} ${sx(x).toFixed(2)} ${sy(ys[i]).toFixed(2)}`).join(' ');
+  s.appendChild(svg('path', {d, fill:'none', stroke:'#2b6cb0', 'stroke-width':2.5}));
+
+  s.appendChild(svg('line', {x1:sx(bestX), y1:sy(y0), x2:sx(bestX), y2:sy(bestY), stroke:'#d69a1f', 'stroke-width':1.5, 'stroke-dasharray':'4,3'}));
+  s.appendChild(svg('line', {x1:sx(x0), y1:sy(bestY), x2:sx(bestX), y2:sy(bestY), stroke:'#d69a1f', 'stroke-width':1.5, 'stroke-dasharray':'4,3'}));
+  s.appendChild(svg('circle', {cx:sx(bestX), cy:sy(bestY), r:6, fill:'#d69a1f', stroke:'#fff', 'stroke-width':1.5}));
+  const lbl = svg('text', {x: sx(bestX)+10, y: sy(bestY)-10, 'font-size':12, 'font-weight':700, fill:'#8a6100'});
+  lbl.textContent = `minimum: slope ${bestX.toFixed(3)}, SSR ${bestY.toFixed(1)}`;
+  s.appendChild(lbl);
+
+  container.appendChild(s);
+}
+
 /* ---------- Part 1, Round 1: meet the data, guess a value ---------- */
 function renderMeetData() {
   const p = document.createElement('div'); p.className = 'panel';
@@ -701,6 +760,7 @@ function renderFormula() {
   const numerator = rows.reduce((a,r) => a + r.prod, 0);
   const denominator = rows.reduce((a,r) => a + r.dx2, 0);
   const b1Check = numerator / denominator;
+  const bowlC = rows.reduce((a,r) => a + r.dy*r.dy, 0); // Σ(score-avg)² — SSR of the flat line (slope 0)
 
   p.innerHTML = `
     <h2>Part 2 &middot; The Formula</h2>
@@ -711,11 +771,12 @@ function renderFormula() {
     <div class="callout" style="margin-top:0;">
       <strong>This is still "minimize the loss function"</strong> — same idea as the squaring you did
       last round. SSR turns out to be a smooth, bowl-shaped curve as you vary b1 and b0, so calculus can
-      jump straight to its lowest point with algebra instead of searching for it. Models you'll meet later
-      in the course — logistic regression, neural networks — minimize their own loss functions the same
-      way in spirit, but usually can't solve for the minimum directly. They search for it step by step
-      instead, using something called <em>gradient descent</em> — basically an automated, smarter version
-      of the slope-hunting you just did by hand.
+      jump straight to its lowest point with algebra instead of searching for it — you'll see that bowl,
+      and the algebra, further down this page. Models you'll meet later in the course — logistic
+      regression, neural networks — minimize their own loss functions the same way in spirit, but usually
+      can't solve for the minimum directly. They search for it step by step instead, using something
+      called <em>gradient descent</em> — basically an automated, smarter version of the slope-hunting you
+      just did by hand.
     </div>
 
     <p class="lede">For every student, ask two questions: how far are their hours
@@ -765,6 +826,34 @@ function renderFormula() {
       b0 just anchors the line so it passes through the class average point (${OLS.xbar.toFixed(2)} hours,
       ${OLS.ybar.toFixed(2)} score) at the slope you just found.</span>
     </div>
+    <h3 style="margin:24px 0 6px; font-size:17px;">Where the formula actually comes from</h3>
+    <p class="lede" style="margin-top:0;">In the Hunt round, every candidate line pivoted through the class
+    average point — the intercept was always <code>average score &minus; slope &times; average hours</code>,
+    just like above. If we lock that in, SSR stops depending on the intercept at all — it becomes a
+    function of the slope alone, built entirely from numbers already on this page:</p>
+    <div class="callout">
+      SSR(slope) = ${denominator.toFixed(2)}&middot;slope&sup2; &minus; 2&times;${numerator.toFixed(2)}&middot;slope + ${bowlC.toFixed(2)}
+      <span class="small-note" style="display:block; text-align:left; margin-top:6px;">
+      ${denominator.toFixed(2)} and ${numerator.toFixed(2)} are the two column totals from the table above.
+      ${bowlC.toFixed(2)} is &Sigma;(score &minus; avg)&sup2; — which is exactly the flat line's SSR from
+      two rounds ago (makes sense: slope = 0 is what turns this expression back into the flat line).</span>
+    </div>
+    <p class="lede" style="margin-top:14px;">Since ${denominator.toFixed(2)} is a sum of squares, it's
+    always positive — which makes this an upward-opening bowl. Every slope you could pick sits somewhere on
+    this curve, and its height is that slope's SSR:</p>
+    <div id="bowlChart"></div>
+    <p class="lede" style="margin-top:14px;">Calculus finds the bottom of any bowl by asking where its
+    own slope — the derivative — is exactly zero. Differentiate SSR(slope) with respect to slope, and set
+    that to zero:</p>
+    <div class="callout warm">
+      SSR&prime;(slope) = 2&times;${denominator.toFixed(2)}&middot;slope &minus; 2&times;${numerator.toFixed(2)} = 0
+      <br>&rArr;&nbsp; slope = ${numerator.toFixed(2)} &divide; ${denominator.toFixed(2)} =
+      <strong>${b1Check.toFixed(3)}</strong>
+      <span class="small-note" style="display:block; text-align:left; margin-top:6px;">The exact same
+      division you already did with the table — now you've seen why it's the minimum, not just where it
+      came from.</span>
+    </div>
+
     <p class="lede" style="margin-top:20px;">In symbols, for reference — this is exactly what the table
     above computed:</p>
     <div class="formula-ref">
@@ -798,6 +887,12 @@ function renderFormula() {
     </p>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  renderBowlChart(document.getElementById('bowlChart'), {
+    a: denominator, b: numerator, c: bowlC,
+    xMin: -1, xMax: 10,
+    xLabel: 'slope (b1)', yLabel: 'SSR',
+  });
 }
 
 /* ---------- Wrap-up ---------- */
