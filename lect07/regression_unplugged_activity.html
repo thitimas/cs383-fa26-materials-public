@@ -94,6 +94,14 @@
   .compare-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
   .compare-table tbody td { font-weight: 700; }
 
+  .calc-table-wrap { overflow-x: auto; margin-top: 12px; border-radius: 10px; border: 1px solid #e2e0d8; }
+  .calc-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+  .calc-table th, .calc-table td { padding: 7px 10px; text-align: center; border-bottom: 1px solid #ece9df; }
+  .calc-table thead th { background: #f5f4ef; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; font-weight: 700; }
+  .calc-table tbody tr:last-child td { border-bottom: none; }
+  .calc-table tr.calc-total td { font-weight: 800; color: var(--accent); background: #eef4fb; border-top: 2px solid var(--accent); }
+  .calc-table tr.calc-total td:first-child { color: var(--muted); font-weight: 700; text-align: right; }
+
   .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
 
   footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
@@ -677,20 +685,73 @@ function renderHunt() {
 /* ---------- Part 2, Round 4: the formula ---------- */
 function renderFormula() {
   const p = document.createElement('div'); p.className = 'panel';
+  const rows = HOURS.map((h,i) => {
+    const dx = h - OLS.xbar;
+    const dy = SCORES[i] - OLS.ybar;
+    return { h, y: SCORES[i], dx, dy, prod: dx*dy, dx2: dx*dx };
+  });
+  const numerator = rows.reduce((a,r) => a + r.prod, 0);
+  const denominator = rows.reduce((a,r) => a + r.dx2, 0);
+  const b1Check = numerator / denominator;
+
   p.innerHTML = `
     <h2>Part 2 &middot; The Formula</h2>
-    <p class="lede">Calculus says: at the minimum of SSR, two clean formulas fall out.</p>
+    <p class="lede">Last round you hunted for the best slope by trial and error. This is how the line
+    actually <strong>learns</strong> its slope and intercept straight from the data — solving for the
+    minimum of SSR directly, instead of guessing and checking.</p>
+
+    <p class="lede" style="margin-top:0;">For every student, ask two questions: how far are their hours
+    from the class average, and how far is their score from the class average?</p>
+
+    <div class="calc-table-wrap">
+      <table class="calc-table">
+        <thead>
+          <tr>
+            <th>Hours</th><th>Score</th><th>hours &minus; avg</th><th>score &minus; avg</th>
+            <th>multiply them</th><th>square the hours diff</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `<tr>
+            <td>${r.h}</td><td>${r.y}</td>
+            <td>${r.dx>=0?'+':''}${r.dx.toFixed(2)}</td>
+            <td>${r.dy>=0?'+':''}${r.dy.toFixed(2)}</td>
+            <td>${r.prod.toFixed(2)}</td>
+            <td>${r.dx2.toFixed(2)}</td>
+          </tr>`).join('')}
+          <tr class="calc-total">
+            <td colspan="4">add up those two columns &rarr;</td>
+            <td>${numerator.toFixed(2)}</td>
+            <td>${denominator.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="lede" style="margin-top:16px;">Divide those two totals, and the slope falls straight out —
+    no calculus needed to <em>use</em> the formula, only to prove it's the minimum.</p>
+
     <div class="callout">
-      <strong>slope (b1)</strong> = covariance of x and y &divide; variance of x<br>
-      <strong>intercept (b0)</strong> = average(y) &minus; slope &times; average(x)
+      <strong>slope (b1)</strong> = ${numerator.toFixed(2)} &divide; ${denominator.toFixed(2)} =
+      <strong>${b1Check.toFixed(3)}</strong>
+      <span class="small-note" style="display:block; text-align:left; margin-top:6px;">In plain English:
+      for every extra hour of studying, score goes up by about ${OLS.b1.toFixed(2)} points on average,
+      across this class. (This ratio has a name — covariance of x and y &divide; variance of x — but the
+      table above is all it's really doing.)</span>
     </div>
-    <p class="lede" style="margin-top:16px;">Plugged into this exact dataset:</p>
-    <div class="callout warm">
-      average hours = ${OLS.xbar.toFixed(2)}, average score = ${OLS.ybar.toFixed(2)}<br>
-      slope (b1) = ${OLS.b1.toFixed(3)}<br>
-      intercept (b0) = ${OLS.b0.toFixed(3)}<br><br>
-      That's exactly the line you were hunting for last round — no trial and error required.
+    <div class="callout warm" style="margin-top:12px;">
+      <strong>intercept (b0)</strong> = average score &minus; slope &times; average hours
+      = ${OLS.ybar.toFixed(2)} &minus; ${OLS.b1.toFixed(3)} &times; ${OLS.xbar.toFixed(2)} =
+      <strong>${OLS.b0.toFixed(3)}</strong>
+      <span class="small-note" style="display:block; text-align:left; margin-top:6px;">In plain English:
+      b0 just anchors the line so it passes through the class average point (${OLS.xbar.toFixed(2)} hours,
+      ${OLS.ybar.toFixed(2)} score) at the slope you just found.</span>
     </div>
+    <div class="callout" style="margin-top:12px;">
+      Plug in ${OLS.b1.toFixed(3)} and ${OLS.b0.toFixed(3)} and you get exactly the line you were hunting
+      for last round — the data <em>learned</em> its own best-fit line, no trial and error required.
+    </div>
+
     <p class="lede" style="margin-top:18px; text-align:center;">
       <strong>Now open <code>lect07_regression.ipynb</code></strong> — Part 1 derives this same formula
       and confirms it against scikit-learn, on real restaurant-inspection data.
