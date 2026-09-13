@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CS383 — Lecture 6 Unplugged Activity</title>
+<title>CS383 — Lecture 6 Unplugged Activity: Encoding &amp; Scaling</title>
 <style>
   :root {
     --ink: #1f2430;
@@ -101,15 +101,24 @@
   .recap-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
   .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
   .recap-list li { margin-bottom: 10px; }
+
+  .ec-buttons { display: flex; gap: 8px; margin-top: 10px; }
+  .ec-buttons button { flex: 1; margin-top: 0; font-size: 13px; padding: 8px 10px; }
+  .btn-pick.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .btn-pick.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .ec-feedback { font-size: 12px; line-height: 1.5; margin: 8px 0 0; text-align: left; color: var(--muted); }
+  .encoding-card { text-align: left; }
+  .encoding-card .name { text-align: center; }
+  .encoding-card .stat-line { text-align: center; margin-bottom: 4px; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Lecture 6 Unplugged Activity — Why Scale?</h1>
-  <p>No coding yet. Before we open the notebook, let's figure out for ourselves why "comparable scale"
-  matters — using three everyday pairs of numbers: age &amp; income, restaurant inspections, and student
-  study habits.</p>
+  <h1>Lecture 6 Unplugged Activity — Getting Your Features Ready</h1>
+  <p>No coding yet. Before we open the notebook, let's work out two things by hand: which transform fits
+  a category (nominal or ordinal?), and why "comparable scale" matters for numbers — using three everyday
+  pairs: age &amp; income, restaurant inspections, and student study habits.</p>
 </header>
 
 <div id="progressWrap">
@@ -315,6 +324,90 @@ function renderNumberLines(container, cfgLines) {
   drawLine(f2, padT + 20 + lineGap - 40);
 
   container.appendChild(s);
+}
+
+/* ---------- Warm-up: Nominal or Ordinal? (encoding choice) ---------- */
+const ENCODING_CARDS = [
+  { name: 'Borough', values: 'Manhattan, Brooklyn, Queens, Bronx, Staten Island', type: 'nominal', transform: 'onehot',
+    typeWhy: 'Boroughs don\'t have a built-in order — Brooklyn isn\'t "more" or "less" than Queens.',
+    transformWhy: 'One-hot gives each borough its own column, so no fake order gets introduced.' },
+  { name: 'Complaint Type', values: 'Noise, Illegal Parking, Water Leak, Blocked Driveway', type: 'nominal', transform: 'onehot',
+    typeWhy: 'These are just different categories — none of them outranks another.',
+    transformWhy: 'Same logic: one-hot avoids implying an order that isn\'t there.' },
+  { name: 'Cuisine Description', values: 'Italian, Chinese, American, Mexican', type: 'nominal', transform: 'onehot',
+    typeWhy: 'Cuisine types don\'t rank against each other either.',
+    transformWhy: 'One-hot again — a separate column per cuisine, no order implied.' },
+  { name: 'Restaurant Grade', values: 'A, B, C', type: 'ordinal', transform: 'ordinal',
+    typeWhy: 'A is genuinely better than B, which is better than C — that\'s a real order.',
+    transformWhy: 'Ordinal encoding turns that order into one meaningful number (e.g. A=0, B=1, C=2).' },
+  { name: 'Complaint Priority', values: 'Low, Medium, High', type: 'ordinal', transform: 'ordinal',
+    typeWhy: 'Low, Medium, and High have a clear built-in ranking.',
+    transformWhy: 'Ordinal encoding preserves that ranking as one number instead of three separate columns.' },
+  { name: 'T-Shirt Size', values: 'S, M, L, XL', type: 'ordinal', transform: 'ordinal',
+    typeWhy: 'Sizes have a real order: S < M < L < XL.',
+    transformWhy: 'Ordinal encoding again — the order is the whole point of this feature.' },
+];
+
+const encodingState = {};
+ENCODING_CARDS.forEach(c => { encodingState[c.name] = { typeAnswer: null, transformAnswer: null }; });
+
+function ecBtnClass(choice, correctVal, answer) {
+  if (answer === null) return '';
+  if (choice === correctVal) return 'correct';
+  if (choice === answer) return 'incorrect';
+  return '';
+}
+
+function renderEncoding() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Warm-Up &middot; Nominal or Ordinal?</h2>
+    <p class="lede">Not every feature is a number. <strong>Nominal</strong> categories have no natural
+    order (like a borough). <strong>Ordinal</strong> categories have a real order (like a T-shirt size).
+    That distinction decides which transform to use. Tag each one below, then pick its transform.</p>
+    <div class="roster-grid" id="encodingGrid"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const grid = document.getElementById('encodingGrid');
+  grid.innerHTML = '';
+  ENCODING_CARDS.forEach(card => {
+    const st = encodingState[card.name];
+    const typeDone = st.typeAnswer !== null;
+    const transformDone = st.transformAnswer !== null;
+
+    const div = document.createElement('div');
+    div.className = 'person-card encoding-card';
+    div.innerHTML = `
+      <div class="name">${card.name}</div>
+      <div class="stat-line">${card.values}</div>
+      <div class="ec-buttons">
+        <button class="btn-pick ec-type-btn ${ecBtnClass('nominal', card.type, st.typeAnswer)}" data-card="${card.name}" data-choice="nominal">Nominal</button>
+        <button class="btn-pick ec-type-btn ${ecBtnClass('ordinal', card.type, st.typeAnswer)}" data-card="${card.name}" data-choice="ordinal">Ordinal</button>
+      </div>
+      ${typeDone ? `<p class="ec-feedback">${st.typeAnswer === card.type ? '&#10003; ' : '&#10007; '}${card.typeWhy}</p>` : ''}
+      ${typeDone ? `
+        <div class="ec-buttons ec-transform-buttons">
+          <button class="btn-pick ec-transform-btn ${ecBtnClass('onehot', card.transform, st.transformAnswer)}" data-card="${card.name}" data-choice="onehot">One-Hot</button>
+          <button class="btn-pick ec-transform-btn ${ecBtnClass('ordinal', card.transform, st.transformAnswer)}" data-card="${card.name}" data-choice="ordinal">Ordinal Encoding</button>
+        </div>` : ''}
+      ${transformDone ? `<p class="ec-feedback">${st.transformAnswer === card.transform ? '&#10003; ' : '&#10007; '}${card.transformWhy}</p>` : ''}
+    `;
+    grid.appendChild(div);
+  });
+
+  grid.querySelectorAll('.ec-type-btn').forEach(btn => {
+    btn.onclick = () => {
+      encodingState[btn.dataset.card].typeAnswer = btn.dataset.choice;
+      renderEncoding();
+    };
+  });
+  grid.querySelectorAll('.ec-transform-btn').forEach(btn => {
+    btn.onclick = () => {
+      encodingState[btn.dataset.card].transformAnswer = btn.dataset.choice;
+      renderEncoding();
+    };
+  });
 }
 
 /* ---------- Round 1: meet the roster, make a guess ---------- */
@@ -862,9 +955,14 @@ function renderSummary() {
       small, fixed roster. In a real ML workflow, split the data first and fit the scaler using only the
       training set to avoid data leakage — the same rule Part 4 of today's notebook covers in code.
     </div>
+    <div class="callout">
+      <strong>Don't forget the warm-up:</strong> nominal vs. ordinal was the other feature-prep decision
+      today — no order, one-hot; real order, ordinal encoding. Scaling is a separate question that only
+      applies once a feature is numeric.
+    </div>
     <p class="lede" style="margin-top:18px; text-align:center;">
-      <strong>Now open <code>lect06_feature_engineering.ipynb</code></strong> — Part 3 does this same
-      standardization step for real, on NYC 311 data.
+      <strong>Now open <code>lect06_feature_engineering.ipynb</code></strong> — Part 2 does the encoding
+      choice for real, and Part 3 does this same standardization step, both on NYC 311 data.
     </p>
   `;
   const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
@@ -872,6 +970,7 @@ function renderSummary() {
 
 /* ---------- navigation shell ---------- */
 const STAGES = [
+  {label: 'Warm-Up · Nominal or Ordinal?', render: renderEncoding},
   {label: 'Example 1 · Round 1 — Meet the Roster', render: renderRound1},
   {label: 'Example 1 · Round 2 — Raw Numbers', render: renderRound2},
   {label: 'Example 1 · Round 3 — Scaled Numbers', render: renderRound3},
