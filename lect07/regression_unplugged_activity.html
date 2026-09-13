@@ -249,7 +249,7 @@ function renderRegressionPlot(container, cfg) {
     .filter(l => l.label)
     .map(l => ({ y: sy(l.slope*x1 + l.intercept), text: l.label, color: l.color }))
     .sort((a,b) => a.y - b.y);
-  const minGap = 16;
+  const minGap = 20;
   for (let i = 1; i < labelItems.length; i++) {
     if (labelItems[i].y - labelItems[i-1].y < minGap) {
       labelItems[i].y = labelItems[i-1].y + minGap;
