@@ -489,65 +489,102 @@ function renderResiduals() {
   }
 }
 
-/* ---------- Part 2, Round 2: why square it? ---------- */
+/* ---------- Part 2, Round 2: why square it? (step-through simulation) ---------- */
+let squareStepIndex = 0;
+let squareMode = false; // false = raw residuals, true = squared
+
+function residualAt(i) {
+  const x = HOURS[i], y = SCORES[i];
+  return y - (OLS.b0 + OLS.b1*x);
+}
+
 function renderWhySquare() {
   const p = document.createElement('div'); p.className = 'panel';
-  const flatB0 = OLS.ybar; // slope 0, through the centroid
-  const bestSSR = ssrFor(HOURS, SCORES, OLS.b0, OLS.b1);
-  const flatSSR = ssrFor(HOURS, SCORES, flatB0, 0);
-  const bestRaw = rawResidSumFor(HOURS, SCORES, OLS.b0, OLS.b1);
-  const flatRaw = rawResidSumFor(HOURS, SCORES, flatB0, 0);
+  const n = HOURS.length;
+  const revealed = Array.from({length: squareStepIndex}, (_,i) => i);
+  const rawSum = revealed.reduce((acc,i) => acc + residualAt(i), 0);
+  const sqSum = revealed.reduce((acc,i) => acc + residualAt(i)**2, 0);
+  const currentSum = squareMode ? sqSum : rawSum;
+  const done = squareStepIndex === n;
 
   p.innerHTML = `
     <h2>Part 2 &middot; Why Do We Square It?</h2>
-    <p class="lede">Both lines below pass through the class average point, so both have residuals that
-    add up to exactly zero — positives and negatives cancel out.</p>
+    <p class="lede">Click through each student's residual on the least-squares line and watch the running
+    total. ${squareMode
+      ? 'This round we\'re adding up the <strong>squared</strong> residual for each point.'
+      : 'Right now we\'re adding up the <strong>raw</strong> residual for each point — positive above the line, negative below.'}</p>
     <div id="chart4"></div>
-    <p class="small-note">Raw residual sum — flat line: ${flatRaw.toFixed(2)} &nbsp;|&nbsp; tilted line:
-    ${bestRaw.toFixed(2)}</p>
+    <div class="stepper-row">
+      <button class="btn-pick" id="stepBack" ${squareStepIndex===0 ? 'disabled':''}>&larr; Back</button>
+      <div class="stepper-readout">${squareStepIndex}/${n} points added<br>
+        <span class="stepper-ssr">Running sum: ${currentSum.toFixed(2)}</span></div>
+      <button class="btn-pick" id="stepForward" ${squareStepIndex===n ? 'disabled':''}>Add Next Point &rarr;</button>
+    </div>
+    <div class="controls">
+      <button class="btn-nav" id="toggleSquare">${squareMode ? 'Switch Back to Raw Residuals' : 'Now Try Squaring Them'}</button>
+      <button class="btn-nav back" id="resetSteps">Reset</button>
+    </div>
+    ${done ? `<div class="callout ${squareMode ? 'warm' : ''}">
+      <strong>Final ${squareMode ? 'squared' : 'raw'} sum: ${currentSum.toFixed(2)}.</strong>
+      ${squareMode
+        ? 'Every term was positive, so nothing canceled — this total (the SSR) actually reflects how well the line fits.'
+        : 'Practically zero — even though this is a genuinely good fit. Positive and negative residuals canceled each other out. Try squaring them with the button above.'}
+    </div>` : ''}
+    ${done && !squareMode ? `
     <div class="quiz" id="squareQuiz">
-      <div class="q">Going only by "residuals sum to zero," can you tell which line actually fits better?</div>
+      <div class="q">A flat, clearly-worse line through this same average point would <em>also</em> raw-sum to zero. Why doesn't that happen once you square?</div>
       <div class="options">
-        <div class="opt" data-v="no">No — that number is zero either way, so it can't distinguish them</div>
-        <div class="opt" data-v="yes">Yes — zero always means a perfect fit</div>
+        <div class="opt" data-v="right">Squaring makes every term positive, so a bad line's bigger misses can't hide by canceling against smaller ones</div>
+        <div class="opt" data-v="wrong">Squaring only changes the line's slope, not the residuals</div>
       </div>
       <div class="feedback" id="squareFeedback"></div>
-    </div>
-    <div class="callout warm" id="squareReveal" style="display:none;"></div>
+    </div>` : ''}
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 
   renderRegressionPlot(document.getElementById('chart4'), {
-    points: HOURS.map((h,i) => ({x:h, y:SCORES[i], fill:'#5b6472', r:4})),
+    points: HOURS.map((h,i) => ({
+      x:h, y:SCORES[i],
+      fill: i < squareStepIndex ? '#1f2430' : '#cfcdc3',
+      r: i < squareStepIndex ? 6 : 4,
+    })),
     xLabel: 'Study Hours per Week', yLabel: 'Exam Score',
-    lines: [
-      { slope: 0, intercept: flatB0, color:'#8859a3', width:2.5, label:'flat line' },
-      { slope: OLS.b1, intercept: OLS.b0, color:'#2b6cb0', width:2.5, label:'tilted line' },
-    ],
+    lines: [{ slope: OLS.b1, intercept: OLS.b0, color:'#2b6cb0', width:2.5 }],
+    residualsFor: revealed.map(i => {
+      const r = residualAt(i);
+      const val = squareMode ? r*r : r;
+      return {
+        x: HOURS[i], y: SCORES[i],
+        tag: squareMode ? val.toFixed(2) : `${r>=0?'+':''}${r.toFixed(2)}`,
+        color: squareMode ? '#2b6cb0' : (r < 0 ? '#a3302f' : '#2f9e56'),
+      };
+    }),
   });
 
-  document.querySelectorAll('#squareQuiz .opt').forEach(opt => {
-    opt.onclick = () => {
-      document.querySelectorAll('#squareQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
-      const fb = document.getElementById('squareFeedback');
-      const reveal = document.getElementById('squareReveal');
-      reveal.style.display = 'block';
-      reveal.innerHTML = `<strong>Squared instead:</strong> flat line = ${flatSSR.toFixed(0)}, tilted line
-        = ${bestSSR.toFixed(0)}. Squaring stops positive and negative misses from canceling out, so it
-        actually separates a good fit from a bad one — that's why regression minimizes the sum of
-        <em>squared</em> residuals (SSR), not the raw sum.`;
-      if (opt.dataset.v === 'no') {
-        opt.classList.add('correct');
-        fb.className = 'feedback right';
-        fb.textContent = "Right — infinitely many lines through the average point all sum to zero, good fits and bad fits alike. Raw sum can't rank them.";
-      } else {
-        opt.classList.add('incorrect');
-        document.querySelector('#squareQuiz .opt[data-v="no"]').classList.add('correct');
-        fb.className = 'feedback wrong';
-        fb.textContent = 'Actually the opposite — any line through the average point sums to zero, including the clearly-worse flat one. Zero raw sum does not mean a good fit.';
-      }
-    };
-  });
+  document.getElementById('stepBack').onclick = () => { squareStepIndex = Math.max(0, squareStepIndex-1); renderWhySquare(); };
+  document.getElementById('stepForward').onclick = () => { squareStepIndex = Math.min(n, squareStepIndex+1); renderWhySquare(); };
+  document.getElementById('toggleSquare').onclick = () => { squareMode = !squareMode; squareStepIndex = 0; renderWhySquare(); };
+  document.getElementById('resetSteps').onclick = () => { squareStepIndex = 0; renderWhySquare(); };
+
+  const quiz = document.getElementById('squareQuiz');
+  if (quiz) {
+    quiz.querySelectorAll('.opt').forEach(opt => {
+      opt.onclick = () => {
+        quiz.querySelectorAll('.opt').forEach(o => o.classList.remove('correct','incorrect'));
+        const fb = document.getElementById('squareFeedback');
+        if (opt.dataset.v === 'right') {
+          opt.classList.add('correct');
+          fb.className = 'feedback right';
+          fb.textContent = 'Right — once every term is positive, a line with big misses can\'t disguise them by pairing with equally-big misses in the other direction. That\'s exactly what you just watched happen switching from raw to squared.';
+        } else {
+          opt.classList.add('incorrect');
+          quiz.querySelector('.opt[data-v="right"]').classList.add('correct');
+          fb.className = 'feedback wrong';
+          fb.textContent = 'Not quite — the line doesn\'t change at all here. What changes is how we combine the residuals: squared terms can\'t cancel, since none of them are negative.';
+        }
+      };
+    });
+  }
 }
 
 /* ---------- Part 2, Round 3: hunt for the best line ---------- */
