@@ -239,11 +239,26 @@ function renderRegressionPlot(container, cfg) {
       stroke: l.color, 'stroke-width': l.width || 2.5,
       'stroke-dasharray': l.dashed ? '6,4' : 'none',
     }));
-    if (l.label) {
-      const lbl = svg('text', {x: sx(x1)-6, y: sy(ly2)-8, 'text-anchor':'end', 'font-size':12, 'font-weight':700, fill:l.color});
-      lbl.textContent = l.label;
-      s.appendChild(lbl);
+  });
+
+  // Line-end labels: multiple lines can converge near the same point (e.g. several
+  // candidate fits all pass close to the top-right corner), which stacks their
+  // labels on top of each other. Sort by natural Y position and push any that are
+  // too close to the previous one further down so every label stays readable.
+  const labelItems = lines
+    .filter(l => l.label)
+    .map(l => ({ y: sy(l.slope*x1 + l.intercept), text: l.label, color: l.color }))
+    .sort((a,b) => a.y - b.y);
+  const minGap = 16;
+  for (let i = 1; i < labelItems.length; i++) {
+    if (labelItems[i].y - labelItems[i-1].y < minGap) {
+      labelItems[i].y = labelItems[i-1].y + minGap;
     }
+  }
+  labelItems.forEach(item => {
+    const lbl = svg('text', {x: sx(x1)-6, y: item.y-4, 'text-anchor':'end', 'font-size':12, 'font-weight':700, fill:item.color});
+    lbl.textContent = item.text;
+    s.appendChild(lbl);
   });
 
   residualsFor.forEach(rp => {
