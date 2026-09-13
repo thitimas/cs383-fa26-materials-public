@@ -248,6 +248,75 @@ function renderScatterPlot(container, cfgPlot) {
   container.appendChild(s);
 }
 
+/* Two independent 1D number lines, one per feature, each auto-scaled to its own
+   true range. Used for the RAW round: a 2D scatter there would auto-scale both
+   axes to fill equal pixel space, which erases the very magnitude mismatch
+   (e.g. income's range in the tens of thousands vs. age's range in the tens)
+   that makes raw distance misleading in the first place — a candidate can look
+   closer on that kind of plot while actually being much farther by the real
+   numbers. Two separate honest number lines avoid that false impression;
+   the actual combined distance is still stated in the callout text below. */
+function renderNumberLines(container, cfgLines) {
+  container.innerHTML = '';
+  const { target, targetName, roster, winnerName, f1, f2 } = cfgLines;
+  const width = 640, lineGap = 150, padT = 40, padB = 20;
+  const height = padT + lineGap + padB;
+  const padL = 24, padR = 24;
+  const plotW = width - padL - padR;
+
+  const s = svg('svg', {width, height, viewBox: `0 0 ${width} ${height}`});
+
+  function drawLine(feature, yBase) {
+    const entries = [
+      { name: targetName, val: target[feature.key], isTarget: true },
+      ...roster.map(p => ({ name: p.name, val: p[feature.key], isWinner: p.name === winnerName })),
+    ];
+    const sorted = [...entries].sort((a,b) => a.val - b.val);
+    const vMin = sorted[0].val, vMax = sorted[sorted.length-1].val;
+    const vPad = (vMax - vMin) * 0.1 || 1;
+    const v0 = vMin - vPad, v1 = vMax + vPad;
+    const sv = v => padL + (v - v0) / (v1 - v0) * plotW;
+
+    const lbl = svg('text', {x: padL, y: yBase - 26, 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+    lbl.textContent = feature.label;
+    s.appendChild(lbl);
+
+    s.appendChild(svg('line', {x1:padL, y1:yBase, x2:padL+plotW, y2:yBase, stroke:'#cfcdc3', 'stroke-width':2}));
+
+    // When two points land almost on top of each other (a real, meaningful case —
+    // e.g. two people with nearly identical income), nudge them apart vertically
+    // in alternating directions so both dots stay visible, without changing what
+    // their X position says about the underlying value.
+    let lastCx = null, jitterToggle = false;
+    sorted.forEach((pt, i) => {
+      const cx = sv(pt.val);
+      const collision = lastCx !== null && Math.abs(cx - lastCx) < 15;
+      const jitter = collision ? (jitterToggle ? 11 : -11) : 0;
+      if (collision) jitterToggle = !jitterToggle; else jitterToggle = false;
+      lastCx = cx;
+
+      const cy = yBase + jitter;
+      const above = (i % 2 === 0) !== (jitter > 0);
+      const r = (pt.isTarget || pt.isWinner) ? 8 : 5;
+      const fill = pt.isTarget ? '#d69a1f' : (pt.isWinner ? '#2b6cb0' : '#a9c2dd');
+      const stroke = pt.isTarget ? '#8a6100' : (pt.isWinner ? '#1f2430' : 'none');
+      s.appendChild(svg('circle', {cx, cy, r, fill, stroke, 'stroke-width': stroke !== 'none' ? 1.5 : 0}));
+      const label = svg('text', {
+        x: cx, y: cy + (above ? -14 : 24), 'text-anchor':'middle', 'font-size':11,
+        'font-weight': (pt.isTarget || pt.isWinner) ? 700 : 600,
+        fill: pt.isTarget ? '#8a6100' : (pt.isWinner ? '#1f2430' : '#5b6472'),
+      });
+      label.textContent = pt.name;
+      s.appendChild(label);
+    });
+  }
+
+  drawLine(f1, padT + 20);
+  drawLine(f2, padT + 20 + lineGap - 40);
+
+  container.appendChild(s);
+}
+
 /* ---------- Round 1: meet the roster, make a guess ---------- */
 let round1Guess = null;
 
@@ -314,10 +383,10 @@ function renderRound2() {
 
   p.innerHTML = `
     <h2>2 &middot; Measure It With Raw Numbers</h2>
-    <p class="lede">Age and income plotted as X/Y coordinates. Closer dot = more similar &mdash; using
-    the raw numbers exactly as reported.</p>
+    <p class="lede">Age and income, each on its own number line, using the raw values exactly as
+    reported.</p>
     <div id="rawChart"></div>
-    <p class="small-note">Gold = Jordan (target). Dark blue = closest match.</p>
+    <p class="small-note">Gold = Jordan (target). Dark blue = closest match by raw distance.</p>
     <div class="callout" id="rawWinnerCallout"></div>
     <div class="quiz" id="r2quiz">
       <div class="q">Does it feel right that ${winner.name} (age ${winner.age}) is the "most similar" person to Jordan (age ${JORDAN.age})?</div>
@@ -329,13 +398,13 @@ function renderRound2() {
     </div>
   `;
   const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
-  renderScatterPlot(document.getElementById('rawChart'), {
-    targetPoint: { x: JORDAN.age, y: JORDAN.income },
+  renderNumberLines(document.getElementById('rawChart'), {
+    target: JORDAN,
     targetName: JORDAN.name,
-    points: raw.map(r => ({ name: r.name, x: r.age, y: r.income })),
+    roster: raw,
     winnerName: winner.name,
-    xLabel: 'Age',
-    yLabel: 'Income ($)',
+    f1: { key: 'age', label: 'Age' },
+    f2: { key: 'income', label: 'Income ($)' },
   });
 
   document.getElementById('rawWinnerCallout').innerHTML = `<strong>By raw numbers, the closest match is ${winner.name}</strong> (age ${winner.age}, income $${winner.income.toLocaleString()}) &mdash; ${winner.dist.toFixed(1)} units away. Jordan is ${JORDAN.age}. That's a ${Math.abs(winner.age-JORDAN.age)}-year age gap.`;
@@ -369,7 +438,8 @@ function renderRound3() {
   p.innerHTML = `
     <h2>3 &middot; Put Both Features on the Same Footing</h2>
     <p class="lede"><strong>Standardizing</strong> rescales both age and income to a mean of 0 and a
-    standard deviation of 1 &mdash; same units, same footing. Here's the same plot, recomputed.</p>
+    standard deviation of 1 &mdash; same units, same footing. Now the two features can honestly share
+    one X/Y plot.</p>
     <div id="scaledChart"></div>
     <p class="small-note">Same reading as before: closer to the gold dot = more similar.</p>
     <div class="callout" id="scaledWinnerCallout"></div>
@@ -560,7 +630,7 @@ function mkExample(cfg) {
       <h2>${cfg.exampleLabel} — Raw Numbers</h2>
       <p class="lede">${cfg.rawIntro}</p>
       <div id="rawChart"></div>
-      <p class="small-note">Gold = ${cfg.target.name} (target). Dark blue = closest match.</p>
+      <p class="small-note">Gold = ${cfg.target.name} (target). Dark blue = closest match by raw distance.</p>
       <div class="callout" id="rawWinnerCallout"></div>
       <div class="quiz" id="rquiz">
         <div class="q">${cfg.feelsRightQuestion(winner)}</div>
@@ -572,13 +642,13 @@ function mkExample(cfg) {
       </div>
     `;
     const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
-    renderScatterPlot(document.getElementById('rawChart'), {
-      targetPoint: { x: cfg.target[cfg.f1.key], y: cfg.target[cfg.f2.key] },
+    renderNumberLines(document.getElementById('rawChart'), {
+      target: cfg.target,
       targetName: cfg.target.name,
-      points: raw.map(r => ({ name: r.name, x: r[cfg.f1.key], y: r[cfg.f2.key] })),
+      roster: raw,
       winnerName: winner.name,
-      xLabel: cfg.f1.label,
-      yLabel: cfg.f2.label,
+      f1: cfg.f1,
+      f2: cfg.f2,
     });
 
     document.getElementById('rawWinnerCallout').innerHTML = cfg.rawWinnerCallout(winner);
@@ -612,7 +682,7 @@ function mkExample(cfg) {
       <h2>${cfg.exampleLabel} — Scaled Numbers</h2>
       <p class="lede">${cfg.scaledIntro}</p>
       <div id="scaledChart"></div>
-      <p class="small-note">Same reading as before: closer to the gold dot = more similar.</p>
+      <p class="small-note">Now that both features share one plot: closer to the gold dot = more similar.</p>
       <div class="callout" id="scaledWinnerCallout"></div>
       <div class="quiz" id="squiz">
         <div class="q">After standardizing both features, which ${cfg.entityNoun} is closest to ${cfg.target.name}?</div>
@@ -713,13 +783,13 @@ const example2 = mkExample({
   introMeet: `Six restaurants, each with two numbers: violation count and days since last inspection.
     <strong>${RESTAURANT_TARGET.name}</strong> is the target we're finding a match for.`,
   guessPrompt: `<strong>Gut check:</strong> which restaurant looks most similar to ${RESTAURANT_TARGET.name}?`,
-  rawIntro: `Same idea as Example 1 — plotted as X/Y coordinates, using the raw numbers as reported.`,
+  rawIntro: `Same idea as Example 1 — each feature on its own number line, using the raw numbers as reported.`,
   feelsRightQuestion: winner => `Does it feel right that ${winner.name} (${winner.violation_count} violation${winner.violation_count===1?'':'s'}) is ${RESTAURANT_TARGET.name}'s closest match, when ${RESTAURANT_TARGET.name} has ${RESTAURANT_TARGET.violation_count} violations?`,
   feelsRightNoLabel: 'No — that\'s a big difference in violation count',
   feelsRightCorrectFeedback: winner => `Right — it shouldn't feel right. ${winner.name} has only ${winner.violation_count} violation${winner.violation_count===1?'':'s'} versus ${RESTAURANT_TARGET.name}'s ${RESTAURANT_TARGET.violation_count}, a real difference in food-safety history. But days_since_last_inspection ranges into the hundreds while violation_count only ranges roughly 0–15, so raw distance is driven almost entirely by days_since_last_inspection — ${winner.name} just happened to land close on that one big-scale number.`,
   feelsRightWrongFeedback: winner => `Look at the violation counts again — ${winner.violation_count} vs. ${RESTAURANT_TARGET.name}'s ${RESTAURANT_TARGET.violation_count}. Raw distance called this "closest" almost entirely because of days_since_last_inspection, which ranges into the hundreds and swamps violation_count's much smaller 0–15 range.`,
   rawWinnerCallout: winner => `<strong>By raw numbers, the closest match is ${winner.name}</strong> (${winner.violation_count} violation${winner.violation_count===1?'':'s'}, ${winner.days_since} days since last inspection). ${RESTAURANT_TARGET.name} has ${RESTAURANT_TARGET.violation_count} violations — a real gap that raw distance barely reflects.`,
-  scaledIntro: `<strong>Standardizing</strong> rescales both features to a mean of 0 and standard deviation of 1. Here's the same plot, recomputed.`,
+  scaledIntro: `<strong>Standardizing</strong> rescales both features to a mean of 0 and standard deviation of 1. Now the two features can honestly share one X/Y plot.`,
   scaledWinnerCallout: (winner, rawWinner, scaled) => `<strong>After scaling, the closest match is ${winner.name}</strong> (${winner.violation_count} violation${winner.violation_count===1?'':'s'}, ${winner.days_since} days since last inspection) — very close to ${RESTAURANT_TARGET.name}'s ${RESTAURANT_TARGET.violation_count} violations, with a moderate gap in days since inspection. ${rawWinner.name}, last round's raw "winner," is now ranked #${scaled.findIndex(r=>r.name===rawWinner.name)+1}.`,
   whyChangedFeedback: (winner, rawWinner) => `Right — standardizing put violation_count and days_since_last_inspection on the same footing, instead of letting whichever feature has bigger raw numbers automatically win. That's why ${winner.name} — close to ${RESTAURANT_TARGET.name} on both dimensions — replaced ${rawWinner.name}, who was only close on the big-scale number.`,
 });
@@ -745,13 +815,13 @@ const example3 = mkExample({
   introMeet: `Six students, each with two numbers: weekly study hours and previous exam score.
     <strong>${STUDENT_TARGET.name}</strong> is the target we're finding a study partner for.`,
   guessPrompt: `<strong>Gut check:</strong> which student looks most similar to ${STUDENT_TARGET.name}?`,
-  rawIntro: `Same idea again — plotted as X/Y coordinates, using the raw numbers as reported.`,
+  rawIntro: `Same idea again — each feature on its own number line, using the raw numbers as reported.`,
   feelsRightQuestion: winner => `Does it feel right that ${winner.name} (${winner.study_hours} study hours/week) is ${STUDENT_TARGET.name}'s closest match, when ${STUDENT_TARGET.name} studies ${STUDENT_TARGET.study_hours} hours/week?`,
   feelsRightNoLabel: 'No — that\'s a big gap in study hours',
   feelsRightCorrectFeedback: winner => `Right — it shouldn't feel right. ${winner.name} studies ${winner.study_hours} hours a week versus ${STUDENT_TARGET.name}'s ${STUDENT_TARGET.study_hours}, a real difference in study habits. But previous_exam_score runs roughly 0–100 while study_hours only runs roughly 0–20, so raw distance is dominated by whichever score happens to land numerically close to ${STUDENT_TARGET.name}'s — in this case, ${winner.name}'s.`,
   feelsRightWrongFeedback: winner => `Look at the study hours again — ${winner.study_hours} vs. ${STUDENT_TARGET.name}'s ${STUDENT_TARGET.study_hours}. Raw distance called this "closest" almost entirely because of previous_exam_score's much bigger numeric range.`,
   rawWinnerCallout: winner => `<strong>By raw numbers, the closest match is ${winner.name}</strong> (${winner.study_hours} hrs/week, previous score ${winner.prev_score}). ${STUDENT_TARGET.name} studies ${STUDENT_TARGET.study_hours} hours a week — a real gap that raw distance barely reflects.`,
-  scaledIntro: `<strong>Standardizing</strong> rescales both features to a mean of 0 and standard deviation of 1. Here's the same plot, recomputed.`,
+  scaledIntro: `<strong>Standardizing</strong> rescales both features to a mean of 0 and standard deviation of 1. Now the two features can honestly share one X/Y plot.`,
   scaledWinnerCallout: (winner, rawWinner, scaled) => `<strong>After scaling, the closest match is ${winner.name}</strong> (${winner.study_hours} hrs/week, previous score ${winner.prev_score}) — close to ${STUDENT_TARGET.name} on both study hours and exam score, not just one. ${rawWinner.name}, last round's raw "winner," is now ranked #${scaled.findIndex(r=>r.name===rawWinner.name)+1}.`,
   whyChangedFeedback: (winner, rawWinner) => `Right — standardizing put study_hours and previous_exam_score on the same footing, instead of letting the feature with bigger raw numbers automatically win. That's why ${winner.name} — close to ${STUDENT_TARGET.name} on both dimensions — replaced ${rawWinner.name}, who was only close on one.`,
 });
