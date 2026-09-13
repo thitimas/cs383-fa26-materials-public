@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 7 Unplugged Activity: What Is Regression, Really?</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+  .btn-pick.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-pick.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .btn-pick.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+
+  .ec-buttons { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .ec-buttons button { flex: 1; min-width: 120px; margin-top: 0; font-size: 13px; padding: 9px 12px; }
+
+  .stepper-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; }
+  .stepper-row button { min-width: 110px; }
+  .stepper-readout { font-weight: 700; font-size: 15px; min-width: 220px; text-align: center; }
+  .stepper-ssr { font-size: 22px; font-weight: 800; color: var(--accent); }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
+  .recap-list li { margin-bottom: 10px; }
+  code { background: #f0efe9; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 7 Unplugged Activity — What Is Regression, Really?</h1>
+  <p>No coding yet. Part 1 builds intuition for what a regression line is and does. Part 2 works out the
+  math behind "best fit" — visually, one idea at a time.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Unplugged warm-up for Lecture 7 (Linear Regression)
+</footer>
+
+<script>
+/* ---------- data (verified) ---------- */
+const HOURS  = [1,2,3,3,4,5,6,6,7,8,9,10];
+const SCORES = [50,54,60,58,65,64,72,75,78,82,88,90];
+
+// Real, verified numbers from the actual Lecture 7 notebook's restaurant-inspections
+// setup (is_critical -> score): computed via the same by-hand formula this activity
+// teaches, against the shared restaurant_inspections_snapshot.csv (n = 12,572 rows).
+const REST_NEAR_ZERO = { n: 12572, notCriticalMean: 20.50, criticalMean: 20.63, slope: 0.131 };
+
+function mean(arr) { return arr.reduce((a,b)=>a+b,0) / arr.length; }
+function olsFit(xs, ys) {
+  const xbar = mean(xs), ybar = mean(ys);
+  const b1 = xs.reduce((acc,x,i) => acc + (x-xbar)*(ys[i]-ybar), 0) / xs.reduce((acc,x) => acc + (x-xbar)**2, 0);
+  const b0 = ybar - b1*xbar;
+  return { b0, b1, xbar, ybar };
+}
+function ssrFor(xs, ys, b0, b1) {
+  return xs.reduce((acc,x,i) => { const pred = b0 + b1*x; return acc + (ys[i]-pred)**2; }, 0);
+}
+function rawResidSumFor(xs, ys, b0, b1) {
+  return xs.reduce((acc,x,i) => acc + (ys[i] - (b0+b1*x)), 0);
+}
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const OLS = olsFit(HOURS, SCORES);
+
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* Generic scatter plot with zero or more overlaid lines, and optional
+   vertical dashed residual segments measured against lines[0]. */
+function renderRegressionPlot(container, cfg) {
+  container.innerHTML = '';
+  const { points, xLabel, yLabel, lines = [], residualsFor = [] } = cfg;
+  const width = 640, height = 380;
+  const padL = 56, padR = 26, padT = 24, padB = 46;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+
+  const allX = points.map(p => p.x);
+  const allY = points.map(p => p.y);
+  let xMin = Math.min(...allX), xMax = Math.max(...allX);
+  let yMin = Math.min(...allY), yMax = Math.max(...allY);
+  lines.forEach(l => {
+    const y1 = l.slope*xMin + l.intercept, y2 = l.slope*xMax + l.intercept;
+    yMin = Math.min(yMin, y1, y2); yMax = Math.max(yMax, y1, y2);
+  });
+  const xPad = (xMax-xMin)*0.1 || 1, yPad = (yMax-yMin)*0.12 || 1;
+  const x0 = xMin-xPad, x1 = xMax+xPad, y0 = yMin-yPad, y1v = yMax+yPad;
+  const sx = x => padL + (x-x0)/(x1-x0)*plotW;
+  const sy = y => padT + plotH - (y-y0)/(y1v-y0)*plotH;
+
+  const s = svg('svg', {width, height, viewBox: `0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padL, y1:padT, x2:padL, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  const xl = svg('text', {x: padL+plotW/2, y: height-10, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = xLabel; s.appendChild(xl);
+  const yl = svg('text', {x:16, y: padT+plotH/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 16 ${padT+plotH/2})`});
+  yl.textContent = yLabel; s.appendChild(yl);
+
+  lines.forEach(l => {
+    const ly1 = l.slope*x0 + l.intercept, ly2 = l.slope*x1 + l.intercept;
+    s.appendChild(svg('line', {
+      x1: sx(x0), y1: sy(ly1), x2: sx(x1), y2: sy(ly2),
+      stroke: l.color, 'stroke-width': l.width || 2.5,
+      'stroke-dasharray': l.dashed ? '6,4' : 'none',
+    }));
+    if (l.label) {
+      const lbl = svg('text', {x: sx(x1)-6, y: sy(ly2)-8, 'text-anchor':'end', 'font-size':12, 'font-weight':700, fill:l.color});
+      lbl.textContent = l.label;
+      s.appendChild(lbl);
+    }
+  });
+
+  residualsFor.forEach(rp => {
+    const ref = lines[0];
+    const predY = ref.slope*rp.x + ref.intercept;
+    s.appendChild(svg('line', {
+      x1: sx(rp.x), y1: sy(rp.y), x2: sx(rp.x), y2: sy(predY),
+      stroke: rp.color || '#a3302f', 'stroke-width':2, 'stroke-dasharray':'3,3',
+    }));
+    const midY = (sy(rp.y)+sy(predY))/2;
+    if (rp.tag) {
+      const t = svg('text', {x: sx(rp.x)+8, y: midY+4, 'font-size':11, 'font-weight':700, fill: rp.color || '#a3302f'});
+      t.textContent = rp.tag;
+      s.appendChild(t);
+    }
+  });
+
+  points.forEach(p => {
+    s.appendChild(svg('circle', {cx: sx(p.x), cy: sy(p.y), r: p.r || 5, fill: p.fill || '#2b6cb0', stroke: p.stroke || 'none', 'stroke-width': p.stroke ? 1.5 : 0}));
+  });
+
+  container.appendChild(s);
+}
+
+/* ---------- Part 1, Round 1: meet the data, guess a value ---------- */
+function renderMeetData() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 1 &middot; Meet the Data</h2>
+    <p class="lede">Twelve students: how many hours a week they studied, and their exam score.</p>
+    <div id="chart0"></div>
+    <p class="lede" style="margin-top:14px;"><strong>Gut check:</strong> a new student studied 4.5
+    hours/week. What's your best guess for their score?</p>
+    <div class="quiz" id="guessQuiz">
+      <div class="options">
+        <div class="opt" data-v="low">Around 50</div>
+        <div class="opt" data-v="mid">Around 66</div>
+        <div class="opt" data-v="high">Around 85</div>
+      </div>
+      <div class="feedback" id="guessFeedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+  renderRegressionPlot(document.getElementById('chart0'), {
+    points: HOURS.map((h,i) => ({x:h, y:SCORES[i]})),
+    xLabel: 'Study Hours per Week', yLabel: 'Exam Score', lines: [],
+  });
+
+  document.querySelectorAll('#guessQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#guessQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('guessFeedback');
+      if (opt.dataset.v === 'mid') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = 'Right in the ballpark — the least-squares line predicts about 66 for 4.5 hours. You just did linear regression in your head: you saw the trend and extended it.';
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#guessQuiz .opt[data-v="mid"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = 'Look at the trend again — the least-squares line predicts about 66 for 4.5 hours. Whatever you guessed, you were probably using the same idea: following the pattern.';
+      }
+    };
+  });
+}
+
+/* ---------- Part 1, Round 2: pick the best line ---------- */
+const LINE_CANDIDATES = shuffle([
+  { key:'A', slope: 1.0, intercept: 65, color:'#8859a3' },
+  { key:'B', slope: 6.0, intercept: 30, color:'#2f8f83' },
+  { key:'C', slope: OLS.b1+0.6, intercept: OLS.b0-8, color:'#d98c3f' },
+  { key:'D', slope: OLS.b1, intercept: OLS.b0, color:'#c2554f', isBest: true },
+]);
+let lineGuess = null;
+
+function renderPickLine() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 1 &middot; Pick the Best Line</h2>
+    <p class="lede">Four candidate lines through the same data. Before any formulas — which one looks
+    like the best fit?</p>
+    <div id="chart1"></div>
+    <div class="ec-buttons" id="lineButtons"></div>
+    <div class="callout" id="lineFeedback" style="display:none;"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  renderRegressionPlot(document.getElementById('chart1'), {
+    points: HOURS.map((h,i) => ({x:h, y:SCORES[i], fill:'#5b6472', r:4})),
+    xLabel: 'Study Hours per Week', yLabel: 'Exam Score',
+    lines: LINE_CANDIDATES.map(c => ({
+      slope: c.slope, intercept: c.intercept,
+      color: lineGuess ? (c.isBest ? '#2b6cb0' : '#cfcdc3') : c.color,
+      width: lineGuess && c.isBest ? 3.5 : 2,
+      label: `Line ${c.key}`,
+    })),
+  });
+
+  const btnWrap = document.getElementById('lineButtons');
+  btnWrap.innerHTML = LINE_CANDIDATES.map(c => `<button class="btn-pick ${lineGuess===c.key ? 'chosen':''}" data-key="${c.key}">Line ${c.key}</button>`).join('');
+  btnWrap.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => { lineGuess = btn.dataset.key; renderPickLine(); };
+  });
+
+  if (lineGuess) {
+    const fb = document.getElementById('lineFeedback');
+    fb.style.display = 'block';
+    const guessedCard = LINE_CANDIDATES.find(c => c.key === lineGuess);
+    const rows = LINE_CANDIDATES.map(c => {
+      const s = ssrFor(HOURS, SCORES, c.intercept, c.slope);
+      return `Line ${c.key}: total squared miss = ${s.toFixed(0)}${c.isBest ? ' (the least-squares best fit)' : ''}`;
+    }).join('<br>');
+    fb.innerHTML = `${guessedCard.isBest
+      ? '<strong>Nice eye — that\'s the least-squares best fit.</strong>'
+      : `<strong>You picked Line ${lineGuess}.</strong> Line ${LINE_CANDIDATES.find(c=>c.isBest).key} is actually the least-squares best fit.`
+    }<br><br>${rows}<br><br>"Best" here just means the smallest total squared miss — exactly what Part 2 defines properly.`;
+  }
+}
+
+/* ---------- Part 1, Round 3: when the pattern disappears ---------- */
+function renderFlatBridge() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 1 &middot; When the Pattern Disappears</h2>
+    <p class="lede">Not every relationship looks like the study-hours example. This is real data from the
+    restaurant inspections you've used since Lecture 4 &mdash; ${REST_NEAR_ZERO.n.toLocaleString()}
+    inspection records, split by whether a critical violation was found.</p>
+    <div id="chart2"></div>
+    <p class="small-note">Illustrative points around the real group averages — average score, not
+    critical: ${REST_NEAR_ZERO.notCriticalMean.toFixed(2)} &nbsp;|&nbsp; average score, critical:
+    ${REST_NEAR_ZERO.criticalMean.toFixed(2)}</p>
+    <div class="quiz" id="flatQuiz">
+      <div class="q">Does whether a violation was "critical" seem to move the score much?</div>
+      <div class="options">
+        <div class="opt" data-v="no">No &mdash; the two averages are almost identical</div>
+        <div class="opt" data-v="yes">Yes, critical violations clearly lower the score</div>
+      </div>
+      <div class="feedback" id="flatFeedback"></div>
+    </div>
+    <div class="callout warm">
+      <strong>This is a real, honest finding</strong> &mdash; not every x predicts y. The least-squares
+      line for this data has a slope of about ${REST_NEAR_ZERO.slope}: barely different from flat. A good
+      regression model reports that honestly instead of pretending to find a pattern that isn't there.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const rng = mulberry32(7);
+  const pts = [];
+  for (let i=0;i<35;i++) pts.push({x: rng()*0.7, y: REST_NEAR_ZERO.notCriticalMean + (rng()-0.5)*14, fill:'#a9c2dd', r:4});
+  for (let i=0;i<35;i++) pts.push({x: 1+rng()*0.7-0.35, y: REST_NEAR_ZERO.criticalMean + (rng()-0.5)*14, fill:'#a9c2dd', r:4});
+  renderRegressionPlot(document.getElementById('chart2'), {
+    points: pts,
+    xLabel: 'Critical violation? (0 = No, 1 = Yes, jittered)', yLabel: 'Score',
+    lines: [{ slope: REST_NEAR_ZERO.slope, intercept: REST_NEAR_ZERO.notCriticalMean, color:'#2b6cb0', width:3 }],
+  });
+
+  document.querySelectorAll('#flatQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#flatQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('flatFeedback');
+      if (opt.dataset.v === 'no') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = 'Right — the averages are 20.50 vs. 20.63, a difference of about a tenth of a point. A near-zero slope is still a real answer, and an honest one.';
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#flatQuiz .opt[data-v="no"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = 'Look at the two averages again — 20.50 vs. 20.63. That gap is tiny. The honest fitted line here is nearly flat.';
+      }
+    };
+  });
+}
+
+/* ---------- Part 2, Round 1: what's a residual? ---------- */
+const RESIDUAL_POINTS = [
+  { idx:5, key:'over',  label:'5 hrs, scored 64' },
+  { idx:9, key:'spot',  label:'8 hrs, scored 82' },
+  { idx:7, key:'under', label:'6 hrs, scored 75' },
+];
+let residualPick = null;
+
+function renderResiduals() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 2 &middot; What's a Residual?</h2>
+    <p class="lede">For any line, the <strong>residual</strong> for one point is how far off the
+    prediction was: residual = actual &minus; predicted. Click a student to see their residual.</p>
+    <div id="chart3"></div>
+    <div class="ec-buttons" id="residButtons"></div>
+    <div class="callout" id="residFeedback" style="display:none;"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const chosen = residualPick ? RESIDUAL_POINTS.find(r => r.key === residualPick) : null;
+  const residuals = chosen ? [(() => {
+    const x = HOURS[chosen.idx], y = SCORES[chosen.idx];
+    const pred = OLS.b0 + OLS.b1*x;
+    const resid = y - pred;
+    return { x, y, tag: `${resid>=0?'+':''}${resid.toFixed(2)}`, color: resid<0 ? '#a3302f' : '#2f9e56' };
+  })()] : [];
+
+  renderRegressionPlot(document.getElementById('chart3'), {
+    points: HOURS.map((h,i) => ({x:h, y:SCORES[i], fill: (chosen && i===chosen.idx) ? '#1f2430' : '#a9c2dd', r: (chosen && i===chosen.idx) ? 7 : 5})),
+    xLabel: 'Study Hours per Week', yLabel: 'Exam Score',
+    lines: [{ slope: OLS.b1, intercept: OLS.b0, color:'#2b6cb0', width:2.5, label:'least-squares line' }],
+    residualsFor: residuals,
+  });
+
+  const btnWrap = document.getElementById('residButtons');
+  btnWrap.innerHTML = RESIDUAL_POINTS.map(r => `<button class="btn-pick ${residualPick===r.key?'chosen':''}" data-key="${r.key}">${r.label}</button>`).join('');
+  btnWrap.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => { residualPick = btn.dataset.key; renderResiduals(); };
+  });
+
+  if (chosen) {
+    const x = HOURS[chosen.idx], y = SCORES[chosen.idx];
+    const pred = OLS.b0 + OLS.b1*x;
+    const resid = y - pred;
+    const fb = document.getElementById('residFeedback');
+    fb.style.display = 'block';
+    fb.innerHTML = resid < -0.5
+      ? `<strong>Predicted ${pred.toFixed(1)}, actual ${y}.</strong> Residual = ${resid.toFixed(2)} — negative, so the line <em>over</em>-predicted this student.`
+      : (resid > 0.5
+        ? `<strong>Predicted ${pred.toFixed(1)}, actual ${y}.</strong> Residual = +${resid.toFixed(2)} — positive, so the line <em>under</em>-predicted this student.`
+        : `<strong>Predicted ${pred.toFixed(1)}, actual ${y}.</strong> Residual = ${resid.toFixed(2)} — about as close to zero as this dataset gets.`);
+  }
+}
+
+/* ---------- Part 2, Round 2: why square it? ---------- */
+function renderWhySquare() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const flatB0 = OLS.ybar; // slope 0, through the centroid
+  const bestSSR = ssrFor(HOURS, SCORES, OLS.b0, OLS.b1);
+  const flatSSR = ssrFor(HOURS, SCORES, flatB0, 0);
+  const bestRaw = rawResidSumFor(HOURS, SCORES, OLS.b0, OLS.b1);
+  const flatRaw = rawResidSumFor(HOURS, SCORES, flatB0, 0);
+
+  p.innerHTML = `
+    <h2>Part 2 &middot; Why Do We Square It?</h2>
+    <p class="lede">Both lines below pass through the class average point, so both have residuals that
+    add up to exactly zero — positives and negatives cancel out.</p>
+    <div id="chart4"></div>
+    <p class="small-note">Raw residual sum — flat line: ${flatRaw.toFixed(2)} &nbsp;|&nbsp; tilted line:
+    ${bestRaw.toFixed(2)}</p>
+    <div class="quiz" id="squareQuiz">
+      <div class="q">Going only by "residuals sum to zero," can you tell which line actually fits better?</div>
+      <div class="options">
+        <div class="opt" data-v="no">No — that number is zero either way, so it can't distinguish them</div>
+        <div class="opt" data-v="yes">Yes — zero always means a perfect fit</div>
+      </div>
+      <div class="feedback" id="squareFeedback"></div>
+    </div>
+    <div class="callout warm" id="squareReveal" style="display:none;"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  renderRegressionPlot(document.getElementById('chart4'), {
+    points: HOURS.map((h,i) => ({x:h, y:SCORES[i], fill:'#5b6472', r:4})),
+    xLabel: 'Study Hours per Week', yLabel: 'Exam Score',
+    lines: [
+      { slope: 0, intercept: flatB0, color:'#8859a3', width:2.5, label:'flat line' },
+      { slope: OLS.b1, intercept: OLS.b0, color:'#2b6cb0', width:2.5, label:'tilted line' },
+    ],
+  });
+
+  document.querySelectorAll('#squareQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#squareQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('squareFeedback');
+      const reveal = document.getElementById('squareReveal');
+      reveal.style.display = 'block';
+      reveal.innerHTML = `<strong>Squared instead:</strong> flat line = ${flatSSR.toFixed(0)}, tilted line
+        = ${bestSSR.toFixed(0)}. Squaring stops positive and negative misses from canceling out, so it
+        actually separates a good fit from a bad one — that's why regression minimizes the sum of
+        <em>squared</em> residuals (SSR), not the raw sum.`;
+      if (opt.dataset.v === 'no') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "Right — infinitely many lines through the average point all sum to zero, good fits and bad fits alike. Raw sum can't rank them.";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#squareQuiz .opt[data-v="no"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = 'Actually the opposite — any line through the average point sums to zero, including the clearly-worse flat one. Zero raw sum does not mean a good fit.';
+      }
+    };
+  });
+}
+
+/* ---------- Part 2, Round 3: hunt for the best line ---------- */
+let huntSlope = 0;
+let huntRevealed = false;
+
+function renderHunt() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const huntIntercept = OLS.ybar - huntSlope*OLS.xbar;
+  const huntSSR = ssrFor(HOURS, SCORES, huntIntercept, huntSlope);
+  const bestSSR = ssrFor(HOURS, SCORES, OLS.b0, OLS.b1);
+
+  p.innerHTML = `
+    <h2>Part 2 &middot; Hunt for the Best Line</h2>
+    <p class="lede">Every line below passes through the class average point (same trick as last round).
+    Adjust the slope and try to make the total squared miss (SSR) as small as you can.</p>
+    <div id="chart5"></div>
+    <div class="stepper-row">
+      <button class="btn-pick" id="slopeDown">&minus; slope</button>
+      <div class="stepper-readout">slope = ${huntSlope.toFixed(1)}<br><span class="stepper-ssr">SSR = ${huntSSR.toFixed(0)}</span></div>
+      <button class="btn-pick" id="slopeUp">+ slope</button>
+    </div>
+    <div class="controls">
+      <button class="btn-nav" id="revealBest">Reveal the Least-Squares Fit</button>
+    </div>
+    <div class="callout" id="huntReveal" style="display:${huntRevealed ? 'block':'none'}"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const lines = [{ slope: huntSlope, intercept: huntIntercept, color:'#2b6cb0', width:3, label:'your line' }];
+  if (huntRevealed) lines.push({ slope: OLS.b1, intercept: OLS.b0, color:'#d69a1f', width:2, dashed:true, label:'least-squares fit' });
+
+  renderRegressionPlot(document.getElementById('chart5'), {
+    points: HOURS.map((h,i) => ({x:h, y:SCORES[i], fill:'#5b6472', r:4})),
+    xLabel: 'Study Hours per Week', yLabel: 'Exam Score',
+    lines,
+  });
+
+  document.getElementById('slopeDown').onclick = () => { huntSlope = Math.round((huntSlope-0.4)*10)/10; renderHunt(); };
+  document.getElementById('slopeUp').onclick = () => { huntSlope = Math.round((huntSlope+0.4)*10)/10; renderHunt(); };
+  document.getElementById('revealBest').onclick = () => { huntRevealed = true; renderHunt(); };
+
+  if (huntRevealed) {
+    document.getElementById('huntReveal').innerHTML = `<strong>Least-squares slope: ${OLS.b1.toFixed(2)}, SSR = ${bestSSR.toFixed(0)}.</strong>
+      Your best slope so far was ${huntSlope.toFixed(1)}, SSR = ${huntSSR.toFixed(0)}. However close you got
+      by trial and error, there's a formula that finds this exact minimum directly — next.`;
+  }
+}
+
+/* ---------- Part 2, Round 4: the formula ---------- */
+function renderFormula() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 2 &middot; The Formula</h2>
+    <p class="lede">Calculus says: at the minimum of SSR, two clean formulas fall out.</p>
+    <div class="callout">
+      <strong>slope (b1)</strong> = covariance of x and y &divide; variance of x<br>
+      <strong>intercept (b0)</strong> = average(y) &minus; slope &times; average(x)
+    </div>
+    <p class="lede" style="margin-top:16px;">Plugged into this exact dataset:</p>
+    <div class="callout warm">
+      average hours = ${OLS.xbar.toFixed(2)}, average score = ${OLS.ybar.toFixed(2)}<br>
+      slope (b1) = ${OLS.b1.toFixed(3)}<br>
+      intercept (b0) = ${OLS.b0.toFixed(3)}<br><br>
+      That's exactly the line you were hunting for last round — no trial and error required.
+    </div>
+    <p class="lede" style="margin-top:18px; text-align:center;">
+      <strong>Now open <code>lect07_regression.ipynb</code></strong> — Part 1 derives this same formula
+      and confirms it against scikit-learn, on real restaurant-inspection data.
+    </p>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+}
+
+/* ---------- Wrap-up ---------- */
+function renderRegressionSummary() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <ul class="recap-list">
+      <li><strong>Part 1 — intuition:</strong> a regression line is just the trend you already see by
+      eye, made precise. And sometimes, honestly, there's no trend to find — a near-flat line is still a
+      real result.</li>
+      <li><strong>Part 2 — the math:</strong> "best fit" means minimizing the sum of squared residuals
+      (SSR). Squaring matters because raw residuals can sum to zero for lines that fit badly. The
+      least-squares formula finds that minimum directly, instead of by trial and error.</li>
+    </ul>
+    <div class="callout">
+      <strong>Coming up in the notebook:</strong> once a line is fit, Part 3 asks how good it actually is
+      — MAE, MSE, RMSE, and R² all build directly on the residuals you just worked with by hand.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label: 'Part 1 · Meet the Data', render: renderMeetData},
+  {label: 'Part 1 · Pick the Best Line', render: renderPickLine},
+  {label: 'Part 1 · When the Pattern Disappears', render: renderFlatBridge},
+  {label: 'Part 2 · What\'s a Residual?', render: renderResiduals},
+  {label: 'Part 2 · Why Square It?', render: renderWhySquare},
+  {label: 'Part 2 · Hunt for the Best Line', render: renderHunt},
+  {label: 'Part 2 · The Formula', render: renderFormula},
+  {label: 'Recap', render: renderRegressionSummary},
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
