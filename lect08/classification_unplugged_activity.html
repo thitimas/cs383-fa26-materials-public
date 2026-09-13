@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 8 Unplugged Activity: Meet Your First Classifiers</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+  .btn-pick.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-pick.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .btn-pick.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+
+  .stepper-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+  .stepper-row button { min-width: 90px; }
+  .stepper-readout { font-weight: 700; font-size: 15px; min-width: 200px; text-align: center; }
+  .stepper-ssr { font-size: 22px; font-weight: 800; color: var(--accent); }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+
+  .compare-table { margin-top: 16px; }
+  .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table th, .compare-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e0d8; }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+  .compare-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .compare-table tbody td { font-weight: 700; }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
+  .recap-list li { margin-bottom: 10px; }
+  code { background: #f0efe9; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+
+  .slider-row { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 18px; }
+  .slider-row input[type="range"] { width: 100%; max-width: 500px; }
+  .proba-readout { font-size: 15px; text-align: center; margin-top: 6px; }
+  .proba-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; margin-left: 6px; }
+  .proba-badge.pass { background: var(--correct-bg); color: var(--correct-text); }
+  .proba-badge.fail { background: var(--incorrect-bg); color: var(--incorrect-text); }
+
+  .knn-hint { text-align: center; font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .vote-tally { display: flex; justify-content: center; gap: 18px; margin-top: 14px; flex-wrap: wrap; }
+  .vote-box { border-radius: 10px; padding: 10px 18px; text-align: center; min-width: 110px; font-weight: 700; }
+  .vote-box.pass { background: var(--correct-bg); color: var(--correct-text); }
+  .vote-box.fail { background: var(--incorrect-bg); color: var(--incorrect-text); }
+  .vote-box .n { display: block; font-size: 24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 8 Unplugged Activity — Meet Your First Classifiers</h1>
+  <p>No coding yet. You'll sort a few students into pass/fail by eye, meet the sigmoid curve, then
+  compare two very different ways to classify: logistic regression (fits a formula) and k-NN (just
+  compares distances, no training step at all).</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Unplugged warm-up for Lecture 8 (Classification Intro)
+</footer>
+
+<script>
+/* ---------- data (verified against the actual Lecture 8 notebook) ---------- */
+const HOURS  = [1,2,3,3,4,5,6,6,7,8,9,10];
+const SCORES = [50,54,60,58,65,64,72,75,78,82,88,90];
+const PASS   = SCORES.map(s => s >= 65 ? 1 : 0);
+
+// scikit-learn LogisticRegression(penalty=None) fit on HOURS -> PASS, verified in the notebook
+// (matches by-hand gradient descent to within convergence tolerance: b0=-6.9008, b1=1.5342).
+const LOGREG = { b0: -6.9304, b1: 1.5404 };
+
+// Same 40-point illustrative restaurant-reinspection dataset used in the notebook's Part 2.
+const VIOLATIONS = [2, 0, 9, 8, 2, 9, 2, 8, 5, 3, 5, 0, 5, 2, 5, 3, 2, 5, 2, 5,
+                    7, 0, 5, 6, 0, 6, 6, 5, 8, 10, 4, 10, 9, 7, 0, 10, 4, 0, 8, 6];
+const DAYS_UNTIL = [258, 228, 273, 47, 323, 302, 322, 24, 256, 37, 24, 218, 24, 8, 341,
+                    114, 184, 229, 99, 310, 6, 351, 296, 374, 377, 137, 365, 104, 70,
+                    259, 155, 324, 225, 321, 167, 128, 298, 344, 347, 340];
+const PASSES_REINSPECTION = [1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0,
+                              0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0];
+
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+function niceTicks(min, max, targetCount) {
+  if (max <= min) return [min];
+  const range = max - min;
+  const roughStep = range / targetCount;
+  const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const norm = roughStep / mag;
+  const step = (norm < 1.5) ? mag : (norm < 3) ? 2*mag : (norm < 7) ? 5*mag : 10*mag;
+  const start = Math.ceil(min/step - 1e-9) * step;
+  const ticks = [];
+  for (let t = start; t <= max + step*1e-6; t += step) ticks.push(Math.round(t*1e6)/1e6);
+  return ticks;
+}
+function fmtTick(v) {
+  let s = v.toFixed(2);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s;
+}
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* ---------- Stage 0: Sort Them Out ---------- */
+function renderSortThemOut() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Warm-Up &middot; Sort Them Out</h2>
+    <p class="lede">Twelve students, plotted by hours studied. Green = passed (scored 65+), red = failed.
+    Notice it's <em>almost</em> a clean split by hours studied &mdash; almost.</p>
+    <div id="sortChart"></div>
+    <div class="quiz" id="sortQuiz">
+      <div class="q">A new student studied 5.5 hours. Going purely by this picture, what's your best guess?</div>
+      <div class="options">
+        <div class="opt" data-v="pass">Pass</div>
+        <div class="opt" data-v="fail">Fail</div>
+      </div>
+      <div class="feedback" id="sortFeedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const width = 680, height = 140, padL = 40, padR = 40, padY = 50;
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  const x0 = 0, x1 = 11;
+  const sx = x => padL + (x-x0)/(x1-x0)*(width-padL-padR);
+  s.appendChild(svg('line', {x1:padL, y1:height/2, x2:width-padR, y2:height/2, stroke:'#cfcdc3', 'stroke-width':2}));
+  niceTicks(x0, x1, 6).forEach(t => {
+    const tx = sx(t);
+    s.appendChild(svg('line', {x1:tx, y1:height/2-5, x2:tx, y2:height/2+5, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:tx, y:height/2+24, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t); s.appendChild(lbl);
+  });
+  const xl = svg('text', {x:width/2, y:height-8, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = 'Hours studied'; s.appendChild(xl);
+
+  HOURS.forEach((h,i) => {
+    const jitter = (i % 2 === 0) ? -18 : 18;
+    s.appendChild(svg('circle', {
+      cx: sx(h), cy: height/2 + jitter, r: 9,
+      fill: PASS[i] ? '#2f9e56' : '#d64545', stroke:'#fff', 'stroke-width':2,
+    }));
+  });
+  const guideX = sx(5.5);
+  s.appendChild(svg('line', {x1:guideX, y1:20, x2:guideX, y2:height-30, stroke:'#d69a1f', 'stroke-width':2, 'stroke-dasharray':'5,4'}));
+  const glbl = svg('text', {x:guideX, y:16, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'#8a6100'});
+  glbl.textContent = '5.5 hrs?'; s.appendChild(glbl);
+
+  document.getElementById('sortChart').appendChild(s);
+
+  document.querySelectorAll('#sortQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#sortQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('sortFeedback');
+      if (opt.dataset.v === 'pass') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "Reasonable guess — every student who studied 6+ hours passed, and 5.5 sits right at that edge. (The notebook's fitted model puts this at about an 82% chance of passing — not a sure thing, but leaning pass.)";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#sortQuiz .opt[data-v="pass"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = "Most people guess pass here — every student who studied 6 or more hours passed, and 5.5 hours is just shy of that. Worth noting: the 5-hour student narrowly failed, so this is genuinely a close call, not a sure thing either way.";
+      }
+    };
+  });
+}
+
+/* ---------- Stage 1: From a Line to a Curve ---------- */
+let showSigmoid = false;
+function renderLineToCurve() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 1 &middot; From a Line to a Curve</h2>
+    <p class="lede">What if we just fit a straight line through the pass/fail dots, the same way Lecture
+    7 fit a line through numbers?</p>
+    <div id="lineChart"></div>
+    <div class="controls">
+      <button class="btn-nav" id="toggleCurve">${showSigmoid ? 'Back to the Straight Line' : 'Try the Sigmoid Curve Instead'}</button>
+    </div>
+    ${showSigmoid ? `<div class="callout">
+      <strong>The sigmoid function</strong> takes any input and always returns something between 0 and 1
+      — no matter how far left or right you go, the curve just flattens out approaching 0 or 1, never
+      crossing either line. That's exactly the constraint a straight line doesn't have.
+    </div>` : `<div class="callout warm">
+      <strong>Watch the edges.</strong> At 0 hours, this line predicts a "probability" of about
+      <strong>&minus;0.18</strong>. At 15 hours, it predicts about <strong>1.96</strong>. Neither is a
+      valid probability — probabilities can't be negative or bigger than 1. The line simply doesn't know
+      it's supposed to stay in that range.
+    </div>`}
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const width = 680, height = 320, padL = 50, padR = 20, padT = 20, padB = 40;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const x0 = -1, x1 = 16;
+  const y0 = -0.5, y1v = 2.2;
+  const sx = x => padL + (x-x0)/(x1-x0)*plotW;
+  const sy = y => padT + plotH - (y-y0)/(y1v-y0)*plotH;
+
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padL, y1:padT, x2:padL, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  [0,1].forEach(v => {
+    s.appendChild(svg('line', {x1:padL, y1:sy(v), x2:padL+plotW, y2:sy(v), stroke:'#e2e0d8', 'stroke-width':1, 'stroke-dasharray':'3,3'}));
+    const lbl = svg('text', {x:padL-8, y:sy(v)+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = v; s.appendChild(lbl);
+  });
+  const xl = svg('text', {x:padL+plotW/2, y:height-8, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = 'Hours studied'; s.appendChild(xl);
+
+  HOURS.forEach((h,i) => {
+    s.appendChild(svg('circle', {cx:sx(h), cy:sy(PASS[i]), r:6, fill: PASS[i]?'#2f9e56':'#d64545', stroke:'#fff', 'stroke-width':1.5}));
+  });
+
+  if (!showSigmoid) {
+    const lineB1 = 0.1429, lineB0 = -0.1786;
+    const d = `M ${sx(x0)} ${sy(lineB0+lineB1*x0)} L ${sx(x1)} ${sy(lineB0+lineB1*x1)}`;
+    s.appendChild(svg('path', {d, stroke:'#8859a3', 'stroke-width':2.5, fill:'none'}));
+  } else {
+    const N = 100;
+    const pts = Array.from({length:N+1}, (_,i) => x0 + (x1-x0)*i/N);
+    const d = pts.map((x,i) => `${i===0?'M':'L'} ${sx(x)} ${sy(sigmoid((x-5.5)*1.1))}`).join(' ');
+    s.appendChild(svg('path', {d, stroke:'#2b6cb0', 'stroke-width':2.5, fill:'none'}));
+  }
+  document.getElementById('lineChart').appendChild(s);
+
+  document.getElementById('toggleCurve').onclick = () => { showSigmoid = !showSigmoid; renderLineToCurve(); };
+}
+
+/* ---------- Stage 2: Meet Logistic Regression ---------- */
+function renderMeetLogReg() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const slider = document.createElement('input');
+  p.innerHTML = `
+    <h2>Part 1 &middot; Meet Logistic Regression</h2>
+    <p class="lede">This curve is the actual fitted model from the notebook. Drag the slider to see how
+    the predicted probability of passing changes with hours studied.</p>
+    <div id="fitChart"></div>
+    <div class="slider-row">
+      <input type="range" id="hoursSlider" min="0" max="11" step="0.1" value="5.5">
+      <div class="proba-readout" id="probaReadout"></div>
+    </div>
+    <div class="callout">
+      This is exactly what <code>.predict_proba()</code> returns, and <code>.predict()</code> just applies
+      a 0.5 cutoff to it.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const width = 680, height = 320, padL = 50, padR = 20, padT = 20, padB = 40;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const x0 = 0, x1 = 11, y0 = 0, y1v = 1;
+  const sx = x => padL + (x-x0)/(x1-x0)*plotW;
+  const sy = y => padT + plotH - (y-y0)/(y1v-y0)*plotH;
+
+  function draw() {
+    document.getElementById('fitChart').innerHTML = '';
+    const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+    s.appendChild(svg('line', {x1:padL, y1:padT, x2:padL, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+    s.appendChild(svg('line', {x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+    [0, 0.5, 1].forEach(v => {
+      s.appendChild(svg('line', {x1:padL, y1:sy(v), x2:padL+plotW, y2:sy(v), stroke:'#e2e0d8', 'stroke-width':1, 'stroke-dasharray':'3,3'}));
+      const lbl = svg('text', {x:padL-8, y:sy(v)+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+      lbl.textContent = v; s.appendChild(lbl);
+    });
+    const xl = svg('text', {x:padL+plotW/2, y:height-8, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+    xl.textContent = 'Hours studied'; s.appendChild(xl);
+
+    const N = 100;
+    const pts = Array.from({length:N+1}, (_,i) => x0 + (x1-x0)*i/N);
+    const d = pts.map((x,i) => `${i===0?'M':'L'} ${sx(x)} ${sy(sigmoid(LOGREG.b0+LOGREG.b1*x))}`).join(' ');
+    s.appendChild(svg('path', {d, stroke:'#2b6cb0', 'stroke-width':2.5, fill:'none'}));
+
+    HOURS.forEach((h,i) => {
+      s.appendChild(svg('circle', {cx:sx(h), cy:sy(PASS[i]), r:5, fill: PASS[i]?'#2f9e56':'#d64545', stroke:'#fff', 'stroke-width':1.5, opacity:0.85}));
+    });
+
+    const hv = parseFloat(document.getElementById('hoursSlider').value);
+    const pv = sigmoid(LOGREG.b0 + LOGREG.b1*hv);
+    s.appendChild(svg('line', {x1:sx(hv), y1:sy(0), x2:sx(hv), y2:sy(pv), stroke:'#d69a1f', 'stroke-width':1.5, 'stroke-dasharray':'4,3'}));
+    s.appendChild(svg('circle', {cx:sx(hv), cy:sy(pv), r:7, fill:'#d69a1f', stroke:'#fff', 'stroke-width':2}));
+    document.getElementById('fitChart').appendChild(s);
+
+    const readout = document.getElementById('probaReadout');
+    const pct = (pv*100).toFixed(1);
+    const badgeClass = pv >= 0.5 ? 'pass' : 'fail';
+    readout.innerHTML = `${hv.toFixed(1)} hours &rarr; predicted probability of passing:
+      <strong>${pct}%</strong><span class="proba-badge ${badgeClass}">${badgeClass === 'pass' ? 'predict: PASS' : 'predict: FAIL'}</span>`;
+  }
+
+  document.getElementById('hoursSlider').oninput = draw;
+  draw();
+}
+
+/* ---------- Stage 3: Meet k-NN ---------- */
+let knnK = 3;
+let knnClick = null; // {vx, dv} in data space
+function renderMeetKNN() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 2 &middot; Meet k-NN &mdash; No Formula, Just Neighbors</h2>
+    <p class="lede">40 restaurants scheduled for reinspection: how many violations they had, and how many
+    days until the reinspection. Green = passed, red = failed. <strong>Click anywhere on the chart</strong>
+    to drop a new restaurant and see how k-NN would classify it.</p>
+    <div id="knnChart"></div>
+    <div class="stepper-row">
+      <button class="btn-pick ${knnK===1?'chosen':''}" id="k1">k = 1</button>
+      <button class="btn-pick ${knnK===3?'chosen':''}" id="k3">k = 3</button>
+      <button class="btn-pick ${knnK===9?'chosen':''}" id="k9">k = 9</button>
+    </div>
+    <div class="knn-hint" id="knnHint">${knnClick ? '' : 'Click the chart to place a new restaurant.'}</div>
+    <div id="voteTally"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const width = 680, height = 380, padL = 55, padR = 20, padT = 20, padB = 44;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const x0 = -1, x1 = 11, y0 = -20, y1v = 400;
+  const sx = v => padL + (v-x0)/(x1-x0)*plotW;
+  const sy = d => padT + plotH - (d-y0)/(y1v-y0)*plotH;
+  const isx = px => x0 + (px-padL)/plotW*(x1-x0);
+  const isy = py => y0 + (padT+plotH-py)/plotH*(y1v-y0);
+
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padL, y1:padT, x2:padL, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  niceTicks(x0, x1, 5).forEach(t => {
+    const tx = sx(t);
+    s.appendChild(svg('line', {x1:tx, y1:padT+plotH, x2:tx, y2:padT+plotH+5, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:tx, y:padT+plotH+18, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t); s.appendChild(lbl);
+  });
+  niceTicks(y0, y1v, 5).forEach(t => {
+    const ty = sy(t);
+    s.appendChild(svg('line', {x1:padL-5, y1:ty, x2:padL, y2:ty, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:padL-9, y:ty+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t); s.appendChild(lbl);
+  });
+  const xl = svg('text', {x:padL+plotW/2, y:height-8, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = 'Violations'; s.appendChild(xl);
+  const yl = svg('text', {x:16, y:padT+plotH/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 16 ${padT+plotH/2})`});
+  yl.textContent = 'Days until reinspection'; s.appendChild(yl);
+
+  let neighborIdx = [];
+  if (knnClick) {
+    const dists = VIOLATIONS.map((v,i) => {
+      const dd = Math.hypot(v-knnClick.v, DAYS_UNTIL[i]-knnClick.d);
+      return {i, dd};
+    }).sort((a,b) => a.dd-b.dd);
+    neighborIdx = dists.slice(0, knnK).map(o => o.i);
+    neighborIdx.forEach(i => {
+      s.appendChild(svg('line', {x1:sx(knnClick.v), y1:sy(knnClick.d), x2:sx(VIOLATIONS[i]), y2:sy(DAYS_UNTIL[i]), stroke:'#d69a1f', 'stroke-width':1.5, 'stroke-dasharray':'3,3'}));
+    });
+  }
+
+  VIOLATIONS.forEach((v,i) => {
+    const isNeighbor = neighborIdx.includes(i);
+    s.appendChild(svg('circle', {
+      cx:sx(v), cy:sy(DAYS_UNTIL[i]), r: isNeighbor ? 9 : 6,
+      fill: PASSES_REINSPECTION[i] ? '#2f9e56' : '#d64545',
+      stroke: isNeighbor ? '#d69a1f' : '#fff', 'stroke-width': isNeighbor ? 3 : 1.5,
+    }));
+  });
+
+  if (knnClick) {
+    s.appendChild(svg('circle', {cx:sx(knnClick.v), cy:sy(knnClick.d), r:8, fill:'#2b6cb0', stroke:'#fff', 'stroke-width':2}));
+  }
+
+  const svgEl = s;
+  svgEl.style.cursor = 'crosshair';
+  svgEl.addEventListener('click', (evt) => {
+    const rect = svgEl.getBoundingClientRect();
+    const scaleX = width / rect.width, scaleY = height / rect.height;
+    const px = (evt.clientX - rect.left) * scaleX;
+    const py = (evt.clientY - rect.top) * scaleY;
+    let v = Math.round(isx(px)), d = Math.round(isy(py));
+    v = Math.max(0, Math.min(10, v));
+    d = Math.max(0, Math.min(390, d));
+    knnClick = {v, d};
+    renderMeetKNN();
+  });
+
+  document.getElementById('knnChart').appendChild(s);
+
+  document.getElementById('k1').onclick = () => { knnK = 1; renderMeetKNN(); };
+  document.getElementById('k3').onclick = () => { knnK = 3; renderMeetKNN(); };
+  document.getElementById('k9').onclick = () => { knnK = 9; renderMeetKNN(); };
+
+  const tally = document.getElementById('voteTally');
+  if (knnClick && neighborIdx.length) {
+    const passVotes = neighborIdx.filter(i => PASSES_REINSPECTION[i] === 1).length;
+    const failVotes = neighborIdx.length - passVotes;
+    const winner = passVotes > failVotes ? 'pass' : (failVotes > passVotes ? 'fail' : 'tie');
+    tally.innerHTML = `
+      <div class="vote-tally">
+        <div class="vote-box pass"><span class="n">${passVotes}</span>pass votes</div>
+        <div class="vote-box fail"><span class="n">${failVotes}</span>fail votes</div>
+      </div>
+      <div class="callout ${winner==='fail' ? '' : 'warm'}" style="text-align:center;">
+        Among the <strong>${knnK}</strong> nearest neighbor${knnK>1?'s':''}, k-NN predicts:
+        <strong>${winner === 'tie' ? 'a tie (no majority)' : winner.toUpperCase()}</strong>.
+        No formula was fit anywhere — this is the entire algorithm: measure distance, look at the
+        nearest ${knnK}, take a vote.
+      </div>`;
+  } else {
+    tally.innerHTML = '';
+  }
+}
+
+/* ---------- Stage 4: Why Scaling Matters ---------- */
+let scaledView = false;
+function renderScalingMatters() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const target = {v: VIOLATIONS[0], d: DAYS_UNTIL[0]};
+  const candA = {v: VIOLATIONS[1], d: DAYS_UNTIL[1], label: 'A'};
+  const candB = {v: VIOLATIONS[2], d: DAYS_UNTIL[2], label: 'B'};
+
+  function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+  function std(arr) { const m = mean(arr); return Math.sqrt(arr.reduce((a,x)=>a+(x-m)**2,0)/arr.length); }
+  const vMean = mean(VIOLATIONS), vStd = std(VIOLATIONS);
+  const dMean = mean(DAYS_UNTIL), dStd = std(DAYS_UNTIL);
+  const scale = pt => ({ v: (pt.v-vMean)/vStd, d: (pt.d-dMean)/dStd });
+
+  const distUnscaled = pt => Math.hypot(pt.v-target.v, pt.d-target.d);
+  const distScaled = pt => { const ts = scale(target), ps = scale(pt); return Math.hypot(ps.v-ts.v, ps.d-ts.d); };
+
+  const dA = scaledView ? distScaled(candA) : distUnscaled(candA);
+  const dB = scaledView ? distScaled(candB) : distUnscaled(candB);
+  const winner = dA < dB ? 'A' : 'B';
+
+  p.innerHTML = `
+    <h2>Part 2 &middot; Why Scaling Matters for k-NN</h2>
+    <p class="lede">Target restaurant: ${target.v} violations, ${target.d} days until reinspection.
+    Which candidate is more "similar" — A (${candA.v} violations, ${candA.d} days) or
+    B (${candB.v} violations, ${candB.d} days)?</p>
+    <div class="stepper-row">
+      <div class="stepper-readout">Distance to A: <strong>${dA.toFixed(2)}</strong></div>
+      <div class="stepper-readout">Distance to B: <strong>${dB.toFixed(2)}</strong></div>
+    </div>
+    <div class="controls">
+      <button class="btn-nav" id="toggleScale">${scaledView ? 'Back to Unscaled' : 'Scale the Features'}</button>
+    </div>
+    <div class="callout ${scaledView ? 'warm' : ''}">
+      ${scaledView
+        ? `<strong>Scaled, candidate ${winner} wins.</strong> Once both features are standardized to
+           the same footing, candidate A — which actually matches more closely on violations (only 2
+           off, vs. B's 7 off) — comes out closer, the way most people would judge it by eye.`
+        : `<strong>Unscaled, candidate ${winner} wins</strong> — even though B differs from the target by
+           <strong>7 more violations</strong> (a huge gap on a 0-10 scale), while A differs by only 2.
+           B just happens to be a little closer in <em>days</em>, and because days range into the
+           hundreds, that one feature drowns out violations completely. Try scaling.`}
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+  document.getElementById('toggleScale').onclick = () => { scaledView = !scaledView; renderScalingMatters(); };
+}
+
+/* ---------- Stage 5: Wrap-Up ---------- */
+function renderClassificationSummary() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <ul class="recap-list">
+      <li><strong>Logistic regression</strong> is parametric: it fits a formula (weighted sum of
+      features, squashed through the sigmoid) by minimizing a loss function, exactly like linear
+      regression's SSR — except this loss has no closed-form solution, so it needs gradient descent.</li>
+      <li><strong>k-NN</strong> is instance-based: no formula, no training step beyond storing the data.
+      Every prediction is a fresh comparison — distance to every training point, majority vote among the
+      closest <code>k</code>.</li>
+      <li>Logistic regression's decision boundary is always a straight line. k-NN's boundary can bend to
+      match local structure, but a small <code>k</code> chases noise (overfits) while a large
+      <code>k</code> smooths everything into the overall majority class.</li>
+      <li>k-NN lives or dies by scaling — always standardize features first. Logistic regression's
+      coefficients can absorb a feature's raw scale on their own.</li>
+    </ul>
+    <div class="compare-table">
+      <table>
+        <thead><tr><th></th><th>Logistic regression</th><th>k-NN</th></tr></thead>
+        <tbody>
+          <tr><td>Kind</td><td>parametric</td><td>instance-based</td></tr>
+          <tr><td>"Training"</td><td>fits coefficients via a loss function</td><td>just stores the data</td></tr>
+          <tr><td>Decision boundary</td><td>always linear</td><td>adapts locally</td></tr>
+          <tr><td>Needs scaling?</td><td>not strictly</td><td>yes, always</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <strong>Now open <code>lect08_classification_intro.ipynb</code></strong> — Part 1 derives logistic
+      regression from scratch (with real gradient descent), Part 2 builds the decision-boundary charts
+      you just explored, and Part 3 checks all of it against real NYC restaurant-inspection data.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label: 'Warm-Up · Sort Them Out', render: renderSortThemOut},
+  {label: 'Part 1 · From a Line to a Curve', render: renderLineToCurve},
+  {label: 'Part 1 · Meet Logistic Regression', render: renderMeetLogReg},
+  {label: 'Part 2 · Meet k-NN', render: renderMeetKNN},
+  {label: 'Part 2 · Why Scaling Matters', render: renderScalingMatters},
+  {label: 'Recap', render: renderClassificationSummary},
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
