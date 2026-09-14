@@ -547,7 +547,7 @@ function renderClassificationSummary() {
     <ul class="recap-list">
       <li><strong>Logistic regression</strong> is parametric: it fits a formula (weighted sum of
       features, squashed through the sigmoid) by minimizing a loss function, exactly like linear
-      regression's SSR — except this loss has no closed-form solution, so it needs gradient descent.</li>
+      regression's RSS — except this loss has no closed-form solution, so it needs gradient descent.</li>
       <li><strong>k-NN</strong> is instance-based: no formula, no training step beyond storing the data.
       Every prediction is a fresh comparison — distance to every training point, majority vote among the
       closest <code>k</code>.</li>
