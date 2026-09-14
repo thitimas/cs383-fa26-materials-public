@@ -883,7 +883,8 @@ function renderFormula() {
 
     <p class="lede" style="margin-top:18px; text-align:center;">
       <strong>Now open <code>lect07_regression.ipynb</code></strong> — Part 1 derives this same formula
-      and confirms it against scikit-learn, on real restaurant-inspection data.
+      and confirms it against scikit-learn on a small, clean example, then Part 2 applies it to real
+      NYC 311 data.
     </p>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
@@ -909,7 +910,7 @@ function renderRegressionSummary() {
       least-squares formula finds that minimum directly, instead of by trial and error.</li>
     </ul>
     <div class="callout">
-      <strong>Coming up in the notebook:</strong> once a line is fit, Part 3 asks how good it actually is
+      <strong>Coming up in the notebook:</strong> once a line is fit, Part 4 asks how good it actually is
       — MAE, MSE, RMSE, and R² all build directly on the residuals you just worked with by hand.
     </div>
   `;
