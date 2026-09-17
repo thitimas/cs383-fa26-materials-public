@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 9 Unplugged Activity: Precision, Recall, and the Cost of Being Wrong</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+  .btn-pick.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-pick.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .btn-pick.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+
+  .compare-table { margin-top: 16px; }
+  .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table th, .compare-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e0d8; }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+  .compare-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .compare-table tbody td { font-weight: 700; }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
+  .recap-list li { margin-bottom: 10px; }
+  code { background: #f0efe9; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+
+  .slider-row { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 18px; }
+  .slider-row input[type="range"] { width: 100%; max-width: 500px; }
+
+  .cm-grid { display: grid; grid-template-columns: 90px 1fr 1fr; gap: 6px; max-width: 480px; margin: 18px auto 0; font-size: 13px; }
+  .cm-cell { border-radius: 10px; padding: 14px 8px; text-align: center; font-weight: 700; }
+  .cm-cell.tp { background: var(--correct-bg); color: var(--correct-text); }
+  .cm-cell.tn { background: #eef4fb; color: var(--accent); }
+  .cm-cell.fp { background: var(--incorrect-bg); color: var(--incorrect-text); }
+  .cm-cell.fn { background: var(--tricky-bg); color: var(--tricky-text); }
+  .cm-cell .n { display: block; font-size: 26px; margin-top: 2px; }
+  .cm-label { display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--muted); font-size: 12px; text-align: center; }
+  .cm-corner { }
+
+  .metric-row { display: flex; justify-content: center; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+  .metric-box { border-radius: 10px; padding: 10px 18px; text-align: center; min-width: 100px; font-weight: 700; background: #f5f4ef; }
+  .metric-box .n { display: block; font-size: 22px; color: var(--accent); }
+
+  .dot-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; max-width: 620px; margin-left: auto; margin-right: auto; }
+  .dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); position: relative; }
+  .dot.tp { background: var(--correct-border); }
+  .dot.tn { background: #cfd8e3; }
+  .dot.fp { background: var(--incorrect-border); }
+  .dot.fn { background: var(--target-color); }
+  .dot-legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .dot-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 9 Unplugged Activity — Precision, Recall, and the Cost of Being Wrong</h1>
+  <p>No coding yet. Twenty transactions, two of them fraud. Watch a model that does nothing score 90%
+  accuracy, meet the confusion matrix, drag a threshold and watch precision and recall trade off live,
+  then build a ROC curve one threshold at a time.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Unplugged warm-up for Lecture 9 (Evaluation Metrics)
+</footer>
+
+<script>
+/* ---------- data (verified against the actual Lecture 9 notebook, Part 1) ---------- */
+const TRUE_FRAUD = [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0];
+const RISK_SCORE = [0.05,0.08,0.12,0.62,0.15,0.22,0.09,0.55,0.18,0.31,
+                     0.44,0.07,0.28,0.19,0.11,0.36,0.41,0.24,0.33,0.14];
+const N = TRUE_FRAUD.length;
+const N_POS = TRUE_FRAUD.filter(v=>v===1).length;
+const N_NEG = N - N_POS;
+
+function confusionAt(threshold) {
+  let tp=0, fp=0, fn=0, tn=0;
+  for (let i=0;i<N;i++) {
+    const pred = RISK_SCORE[i] >= threshold ? 1 : 0;
+    if (pred===1 && TRUE_FRAUD[i]===1) tp++;
+    else if (pred===1 && TRUE_FRAUD[i]===0) fp++;
+    else if (pred===0 && TRUE_FRAUD[i]===1) fn++;
+    else tn++;
+  }
+  return {tp, fp, fn, tn};
+}
+function metricsFrom(cm) {
+  const precision = (cm.tp+cm.fp) ? cm.tp/(cm.tp+cm.fp) : 0;
+  const recall = (cm.tp+cm.fn) ? cm.tp/(cm.tp+cm.fn) : 0;
+  const f1 = (precision+recall) ? 2*precision*recall/(precision+recall) : 0;
+  const fpr = N_NEG ? cm.fp/N_NEG : 0;
+  return {precision, recall, f1, fpr, tpr: recall};
+}
+function fmtPct(v) { return (v*100).toFixed(0) + '%'; }
+function fmt3(v) { return v.toFixed(3); }
+
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* ---------- Stage 0: The Lazy Classifier ---------- */
+function renderLazy() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Warm-Up &middot; The Lazy Classifier</h2>
+    <p class="lede">Twenty credit card transactions. Two are fraud (gold), eighteen are legitimate
+    (blue-gray). A "classifier" that predicts <strong>"not fraud" for every single one</strong>, without
+    looking at a single feature, scores this accuracy:</p>
+    <div class="dot-grid" id="lazyGrid"></div>
+    <div class="dot-legend">
+      <span><i style="background:#cfd8e3"></i> not fraud (18)</span>
+      <span><i style="background:var(--target-color)"></i> fraud (2)</span>
+    </div>
+    <div class="metric-row">
+      <div class="metric-box">Accuracy<span class="n">90%</span></div>
+    </div>
+    <div class="quiz" id="lazyQuiz">
+      <div class="q">Is 90% accuracy here actually impressive?</div>
+      <div class="options">
+        <div class="opt" data-v="yes">Yes, that's a strong result</div>
+        <div class="opt" data-v="no">No, it's the trivial baseline</div>
+      </div>
+      <div class="feedback" id="lazyFeedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const grid = document.getElementById('lazyGrid');
+  TRUE_FRAUD.forEach(v => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.style.background = v ? 'var(--target-color)' : '#cfd8e3';
+    grid.appendChild(d);
+  });
+
+  document.querySelectorAll('#lazyQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#lazyQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('lazyFeedback');
+      if (opt.dataset.v === 'no') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "Exactly -- with fraud this rare (10% of transactions), predicting \"not fraud\" every time gets you 90% for free. Any real model has to clear this bar, not just clear 50%, and accuracy alone can't tell a model that learned something apart from one that didn't.";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#lazyQuiz .opt[data-v="no"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = "This 90% came from a model that never even looked at the data -- it's just the majority-class baseline, made possible because fraud is rare here (10%). It tells you nothing about whether a model actually learned anything.";
+      }
+    };
+  });
+}
+
+/* ---------- Stage 1: Meet the Confusion Matrix ---------- */
+function renderConfusionMatrix() {
+  const cm = confusionAt(0.5);
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 1 &middot; Meet the Confusion Matrix</h2>
+    <p class="lede">Same 20 transactions, but now a real model has scored each one with a risk probability.
+    Apply the usual 0.5 cutoff and every prediction lands in one of four buckets.</p>
+    <div class="cm-grid">
+      <div class="cm-corner"></div>
+      <div class="cm-label">Predicted: not fraud</div>
+      <div class="cm-label">Predicted: fraud</div>
+      <div class="cm-label">Actual: not fraud</div>
+      <div class="cm-cell tn">TN<span class="n">${cm.tn}</span></div>
+      <div class="cm-cell fp">FP<span class="n">${cm.fp}</span></div>
+      <div class="cm-label">Actual: fraud</div>
+      <div class="cm-cell fn">FN<span class="n">${cm.fn}</span></div>
+      <div class="cm-cell tp">TP<span class="n">${cm.tp}</span></div>
+    </div>
+    <div class="dot-legend">
+      <span><i style="background:var(--correct-border)"></i> TP: caught fraud</span>
+      <span><i style="background:#cfd8e3"></i> TN: cleared, correctly</span>
+      <span><i style="background:var(--incorrect-border)"></i> FP: false alarm</span>
+      <span><i style="background:var(--target-color)"></i> FN: missed fraud</span>
+    </div>
+    <div class="quiz" id="cmQuiz">
+      <div class="q">Accuracy here is (${cm.tp}+${cm.tn})/20 = 90% -- identical to the lazy classifier.
+      Did this model actually learn anything?</div>
+      <div class="options">
+        <div class="opt" data-v="yes">Yes -- look past accuracy</div>
+        <div class="opt" data-v="no">No, same accuracy means same model</div>
+      </div>
+      <div class="feedback" id="cmFeedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  document.querySelectorAll('#cmQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#cmQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('cmFeedback');
+      if (opt.dataset.v === 'yes') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "Right. This model caught 1 of the 2 fraud cases (TP=1) and only raised 1 false alarm (FP=1) -- real, if imperfect, signal. The lazy classifier caught zero fraud, ever. Same accuracy, completely different confusion matrix -- which is exactly why accuracy alone can't be the whole story.";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#cmQuiz .opt[data-v="yes"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = "Look at TP: this model actually caught 1 real fraud case, something the lazy classifier never does. Same accuracy (90%) can hide very different confusion matrices -- that's the whole point of looking past the single number.";
+      }
+    };
+  });
+}
+
+/* ---------- Stage 2: Precision vs Recall Tug-of-War ---------- */
+let threshold = 0.5;
+function renderTugOfWar() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const cm = confusionAt(threshold);
+  const m = metricsFrom(cm);
+  p.innerHTML = `
+    <h2>Part 2 &middot; Precision vs. Recall Tug-of-War</h2>
+    <p class="lede">Drag the threshold. Lowering it flags more transactions as fraud -- recall can only
+    go up (or hold steady); precision usually pays for it.</p>
+    <div class="dot-grid" id="tugGrid"></div>
+    <div class="slider-row">
+      <input type="range" id="threshSlider" min="0.05" max="0.65" step="0.01" value="${threshold}">
+      <div>Threshold: <strong>${threshold.toFixed(2)}</strong> &mdash; ${cm.tp+cm.fp} transaction${cm.tp+cm.fp===1?'':'s'} flagged</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-box">Precision<span class="n">${fmt3(m.precision)}</span></div>
+      <div class="metric-box">Recall<span class="n">${fmt3(m.recall)}</span></div>
+      <div class="metric-box">F1<span class="n">${fmt3(m.f1)}</span></div>
+    </div>
+    <div class="callout ${threshold < 0.4 ? 'warm' : ''}">
+      ${threshold >= 0.45
+        ? `<strong>High threshold, cautious model.</strong> Only the highest-risk transactions get
+           flagged. Few false alarms, but real fraud below this bar slips through uncaught.`
+        : `<strong>Low threshold, aggressive model.</strong> More transactions get a second look,
+           catching more real fraud -- but dragging in more innocent transactions along the way.`}
+      For fraud, missing a real case usually costs more than one extra verification text -- so which
+      error would <em>you</em> rather make here?
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const grid = document.getElementById('tugGrid');
+  RISK_SCORE.forEach((score, i) => {
+    const flagged = score >= threshold;
+    const actual = TRUE_FRAUD[i];
+    let cls;
+    if (flagged && actual) cls = 'tp';
+    else if (flagged && !actual) cls = 'fp';
+    else if (!flagged && actual) cls = 'fn';
+    else cls = 'tn';
+    const d = document.createElement('div');
+    d.className = 'dot ' + cls;
+    d.title = `risk=${score.toFixed(2)}, actual=${actual ? 'fraud' : 'not fraud'}`;
+    grid.appendChild(d);
+  });
+
+  document.getElementById('threshSlider').oninput = (e) => {
+    threshold = parseFloat(e.target.value);
+    renderTugOfWar();
+  };
+}
+
+/* ---------- Stage 3: Build the ROC Curve ---------- */
+const ROC_THRESHOLDS = [0.65, 0.55, 0.45, 0.35, 0.25, 0.15, 0.05];
+let rocStep = 0;
+function renderROC() {
+  const p = document.createElement('div'); p.className = 'panel';
+  const pts = ROC_THRESHOLDS.slice(0, rocStep+1).map(t => {
+    const cm = confusionAt(t);
+    const m = metricsFrom(cm);
+    return {t, fpr: m.fpr, tpr: m.tpr};
+  });
+  const current = pts[pts.length-1];
+  p.innerHTML = `
+    <h2>Part 3 &middot; Build the ROC Curve, One Threshold at a Time</h2>
+    <p class="lede">Each click sweeps the threshold lower, plotting (False Positive Rate, True Positive
+    Rate) at that threshold. Watch the curve take shape.</p>
+    <div id="rocChart"></div>
+    <div class="controls">
+      <button class="btn-nav" id="rocNext" ${rocStep>=ROC_THRESHOLDS.length-1?'disabled':''}>Plot next threshold &rarr;</button>
+      <button class="btn-nav back" id="rocReset">Reset</button>
+    </div>
+    <div class="callout">
+      Threshold = <strong>${current.t.toFixed(2)}</strong>: FPR = ${fmt3(current.fpr)}, TPR (recall) =
+      ${fmt3(current.tpr)}. ${rocStep>=ROC_THRESHOLDS.length-1
+        ? `That's the full curve -- bowed up and to the left of the diagonal means this model genuinely
+           ranks fraud cases higher than legitimate ones, not just guessing.`
+        : `Keep clicking to sweep the threshold further down.`}
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const width = 500, height = 500, pad = 50;
+  const plotSize = width - 2*pad;
+  const sx = v => pad + v*plotSize;
+  const sy = v => pad + plotSize - v*plotSize;
+
+  const s = svg('svg', {width, height, viewBox:`0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:pad, y1:pad, x2:pad, y2:pad+plotSize, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:pad, y1:pad+plotSize, x2:pad+plotSize, y2:pad+plotSize, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:sx(0), y1:sy(0), x2:sx(1), y2:sy(1), stroke:'#9AA5B1', 'stroke-width':1.5, 'stroke-dasharray':'5,4'}));
+  [0,0.5,1].forEach(v => {
+    const lx = svg('text', {x:sx(v), y:pad+plotSize+18, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'});
+    lx.textContent = v; s.appendChild(lx);
+    const ly = svg('text', {x:pad-10, y:sy(v)+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+    ly.textContent = v; s.appendChild(ly);
+  });
+  const xl = svg('text', {x:pad+plotSize/2, y:height-8, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = 'False Positive Rate'; s.appendChild(xl);
+  const yl = svg('text', {x:14, y:pad+plotSize/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 14 ${pad+plotSize/2})`});
+  yl.textContent = 'True Positive Rate'; s.appendChild(yl);
+
+  if (pts.length > 1) {
+    const d = pts.map((pt,i) => `${i===0?'M':'L'} ${sx(pt.fpr)} ${sy(pt.tpr)}`).join(' ');
+    s.appendChild(svg('path', {d, stroke:'#2b6cb0', 'stroke-width':2.5, fill:'none'}));
+  }
+  pts.forEach((pt,i) => {
+    s.appendChild(svg('circle', {
+      cx: sx(pt.fpr), cy: sy(pt.tpr), r: i===pts.length-1 ? 8 : 5,
+      fill: i===pts.length-1 ? '#d69a1f' : '#2b6cb0', stroke:'#fff', 'stroke-width':2,
+    }));
+  });
+
+  document.getElementById('rocChart').appendChild(s);
+
+  document.getElementById('rocNext').onclick = () => {
+    if (rocStep < ROC_THRESHOLDS.length-1) { rocStep++; renderROC(); }
+  };
+  document.getElementById('rocReset').onclick = () => { rocStep = 0; renderROC(); };
+}
+
+/* ---------- Stage 4: Wrap-Up ---------- */
+function renderSummary() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <ul class="recap-list">
+      <li><strong>Accuracy can lie</strong> on imbalanced data -- a model that never looks at the data can
+      match a model that's genuinely learning something, if the majority class is common enough.</li>
+      <li><strong>The confusion matrix</strong> (TP/FP/FN/TN) is what accuracy hides: which kind of
+      mistake a model is making, not just how many.</li>
+      <li><strong>Precision and recall</strong> trade off as the threshold moves -- lower the bar to catch
+      more real positives (recall up), and you'll usually let in more false alarms (precision down).</li>
+      <li><strong>ROC/AUC</strong> measures ranking quality across every threshold at once, so it can
+      reveal real signal even when a single threshold's accuracy looks unimpressive.</li>
+    </ul>
+    <div class="callout">
+      <strong>Now open <code>lect09_evaluation_metrics.ipynb</code></strong> — Part 1 builds this exact
+      confusion matrix in code, Parts 2-4 compute precision/recall/F1 and the ROC curve properly, and
+      Part 5 runs the whole toolkit on real, genuinely imbalanced NYC 311 data.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label: 'Warm-Up · The Lazy Classifier', render: renderLazy},
+  {label: 'Part 1 · Meet the Confusion Matrix', render: renderConfusionMatrix},
+  {label: 'Part 2 · Precision vs. Recall', render: renderTugOfWar},
+  {label: 'Part 3-4 · Build the ROC Curve', render: renderROC},
+  {label: 'Recap', render: renderSummary},
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
