@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 7 Unplugged Activity: Spotting Data Leakage</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+
+  .compare-table { margin-top: 16px; }
+  .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table th, .compare-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e0d8; }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+  .compare-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .compare-table tbody td { font-weight: 700; }
+  .compare-table td.train-col { background: #eef4fb; }
+  .compare-table td.test-col { background: #fff8e8; }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
+  .recap-list li { margin-bottom: 10px; }
+  code { background: #f0efe9; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+
+  .num-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .num-chip {
+    min-width: 56px; padding: 10px 6px; border-radius: 10px; text-align: center;
+    font-weight: 700; font-size: 15px; border: 2px solid #cfcdc3; background: #fff;
+  }
+  .num-chip.train { border-color: var(--accent); background: #eef4fb; color: var(--accent); }
+  .num-chip.test { border-color: var(--target-color); background: #fff8e8; color: #8a6100; }
+  .num-chip .tag { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; opacity: 0.75; }
+
+  .rest-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+  .rest-card {
+    border: 2px solid #e2e0d8; border-radius: 12px; padding: 12px 13px; background: #fff;
+    font-size: 13px; line-height: 1.5;
+  }
+  .rest-card .name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .rest-card .field { color: var(--muted); }
+  .rest-card .field b { color: var(--ink); font-weight: 600; }
+  .rest-card .grade-badge {
+    display: inline-block; margin-top: 6px; padding: 2px 9px; border-radius: 20px;
+    font-weight: 700; font-size: 12px;
+  }
+  .rest-card .grade-badge.A { background: var(--correct-bg); color: var(--correct-text); }
+  .rest-card .grade-badge.B { background: var(--tricky-bg); color: var(--tricky-text); }
+  .rest-card .grade-badge.C { background: var(--incorrect-bg); color: var(--incorrect-text); }
+  .rest-card .score-reveal {
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e0d8;
+    font-weight: 700; color: var(--ink); display: none;
+  }
+  .rest-card.revealed .score-reveal { display: block; }
+  .rest-card .crit-badge {
+    display: inline-block; margin-top: 6px; padding: 2px 9px; border-radius: 20px;
+    font-weight: 700; font-size: 11px; background: #f5f4ef; color: var(--muted);
+  }
+  .rest-card .crit-badge.yes { background: var(--incorrect-bg); color: var(--incorrect-text); }
+
+  .sort-item { border: 2px solid #e2e0d8; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+  .sort-item .setup { font-size: 14px; line-height: 1.55; margin-bottom: 10px; }
+  .sort-item .setup b { color: var(--ink); }
+  .sort-item .sort-options { display: flex; gap: 10px; }
+  .sort-item .sort-options .opt { flex: 1; text-align: center; }
+  .sort-item .feedback { margin-top: 10px; font-size: 13px; line-height: 1.5; min-height: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 7 Unplugged Activity — Spotting Data Leakage</h1>
+  <p>No coding yet. Two different ways a model can look far better than it actually is: peeking at
+  test data while computing "normal," and feeding in a feature that secretly already contains the
+  answer. Feel both before Lecture 7's Part 6 shows you the real thing.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning &middot; Unplugged warm-up for Lecture 7 (Linear Regression)
+</footer>
+
+<script>
+/* ---------- Round 0 data: 8 resolution times (hours), 6 "training" + 2 "test" ---------- */
+const R0_TRAIN = [4, 6, 8, 10, 12, 14];
+const R0_TEST = [40, 44];
+const r0AllMean = (R0_TRAIN.concat(R0_TEST).reduce((a,b)=>a+b,0) / (R0_TRAIN.length+R0_TEST.length));
+const r0TrainMean = (R0_TRAIN.reduce((a,b)=>a+b,0) / R0_TRAIN.length);
+
+/* ---------- Round 1/2 data: 8 real restaurants (verified against the shared snapshot) ---------- */
+/* NYC grades by thresholding score directly: ~0-13 = A, 14-27 = B, 28+ = C (same rule Part 6 uses). */
+const RESTAURANTS = [
+  {name: "Norm's Pizza",        boro: "Manhattan", cuisine: "Pizza",             critical: false, grade: "A", score: 2},
+  {name: "Bangkok Supper Club", boro: "Manhattan", cuisine: "Thai",              critical: true,  grade: "A", score: 13},
+  {name: "Sushi Dairo",         boro: "Manhattan", cuisine: "Japanese",          critical: true,  grade: "A", score: 12},
+  {name: "DQ Pizzeria",         boro: "Bronx",      cuisine: "Pizza",             critical: false, grade: "A", score: 9},
+  {name: "London Lennie's",     boro: "Queens",     cuisine: "Seafood",           critical: true,  grade: "A", score: 12},
+  {name: "Planet Taco",         boro: "Manhattan", cuisine: "Mexican",           critical: false, grade: "B", score: 22},
+  {name: "Aloaf Cafe",          boro: "Manhattan", cuisine: "Bakery/Desserts",   critical: false, grade: "C", score: 38},
+  {name: "Bklyn Blend",         boro: "Brooklyn",   cuisine: "Coffee/Tea",        critical: false, grade: "A", score: 12},
+];
+function bucketOf(score) {
+  if (score <= 13) return "Low (A-range)";
+  if (score <= 27) return "Medium (B-range)";
+  return "High (C-range)";
+}
+
+let r1Revealed = false;
+let r2Revealed = false;
+
+/* ---------- Stage 0: Whose Average Is It, Anyway? ---------- */
+function renderStage0() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Warm-Up &middot; Whose Average Is It, Anyway?</h2>
+    <p class="lede">Eight 311 complaints' resolution times, in hours. Six are "training" complaints you
+    already know about; two are "test" complaints -- pretend they haven't happened yet, and you're about
+    to check whether your model handles them well.</p>
+    <div class="num-grid" id="r0Grid"></div>
+    <div class="compare-table">
+      <table>
+        <thead><tr><th></th><th>Average used to define "typical"</th><th>Test complaint (40h) looks like...</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Version A &mdash; peeked at the test complaints</td>
+            <td class="test-col">${r0AllMean.toFixed(2)} h (all 8 numbers)</td>
+            <td class="test-col">+${(40 - r0AllMean).toFixed(2)} h above "typical"</td>
+          </tr>
+          <tr>
+            <td>Version B &mdash; only used training complaints</td>
+            <td class="train-col">${r0TrainMean.toFixed(2)} h (6 training numbers only)</td>
+            <td class="train-col">+${(40 - r0TrainMean).toFixed(2)} h above "typical"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="quiz" id="r0Quiz">
+      <div class="q">In Version A, is testing your model on those same 2 complaints still a fair test of
+      how it handles complaints it's never seen?</div>
+      <div class="options">
+        <div class="opt" data-v="yes">Yes, it's still a fair test</div>
+        <div class="opt" data-v="no">No -- the test complaints leaked into the setup</div>
+      </div>
+      <div class="feedback" id="r0Feedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const grid = document.getElementById('r0Grid');
+  R0_TRAIN.forEach(v => {
+    const c = document.createElement('div');
+    c.className = 'num-chip train';
+    c.innerHTML = `${v}h<span class="tag">train</span>`;
+    grid.appendChild(c);
+  });
+  R0_TEST.forEach(v => {
+    const c = document.createElement('div');
+    c.className = 'num-chip test';
+    c.innerHTML = `${v}h<span class="tag">test</span>`;
+    grid.appendChild(c);
+  });
+
+  document.querySelectorAll('#r0Quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r0Quiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r0Feedback');
+      if (opt.dataset.v === 'no') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "Right. The moment those 2 test complaints helped decide what \"typical\" means, they stopped being unseen -- Version A already knows something about them before the test even starts. Version B, using only the 6 training complaints, is the honest version: fit the average on training data only, then apply it to the test complaints without letting them influence it.";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#r0Quiz .opt[data-v="no"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = "Not quite -- Version A's average of 17.25h was built using the 2 test complaints themselves. That's like letting a student peek at 2 answers on the test while studying, then testing them on those same 2 questions. Version B (train-only) is the fair version.";
+      }
+    };
+  });
+}
+
+/* ---------- Restaurant card rendering (shared by Stage 1 & 2) ---------- */
+function renderRestaurantCard(r, showGrade, revealed) {
+  return `
+    <div class="rest-card ${revealed ? 'revealed' : ''}">
+      <div class="name">${r.name}</div>
+      <div class="field"><b>${r.boro}</b> &middot; ${r.cuisine}</div>
+      <span class="crit-badge ${r.critical ? 'yes' : ''}">${r.critical ? 'Critical violation found' : 'No critical violation'}</span>
+      ${showGrade ? `<div><span class="grade-badge ${r.grade}">Grade ${r.grade}</span></div>` : ''}
+      <div class="score-reveal">Actual score: ${r.score} &mdash; ${bucketOf(r.score)}</div>
+    </div>
+  `;
+}
+
+/* ---------- Stage 1: Guess the Score, Honestly ---------- */
+function renderStage1() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Round 1 &middot; Guess the Score, Honestly</h2>
+    <p class="lede">Eight real NYC restaurants. For each one, using only its borough, cuisine, and
+    whether a critical violation was found, guess whether its inspection score will be
+    <strong>Low</strong> (A-range), <strong>Medium</strong> (B-range), or <strong>High</strong> (C-range).
+    Write your guesses down (or say them out loud), then reveal.</p>
+    <div class="rest-grid" id="r1Grid"></div>
+    <div class="controls">
+      <button class="btn-nav" id="r1RevealBtn">Reveal actual scores</button>
+    </div>
+    <div class="quiz" id="r1Quiz" style="display:none;">
+      <div class="q">Be honest -- how did your guesses do?</div>
+      <div class="options">
+        <div class="opt" data-v="easy">Pretty easy, I felt confident</div>
+        <div class="opt" data-v="hard">Hard -- these clues didn't tell me much</div>
+      </div>
+      <div class="feedback" id="r1Feedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const grid = document.getElementById('r1Grid');
+  grid.innerHTML = RESTAURANTS.map(r => renderRestaurantCard(r, false, r1Revealed)).join('');
+  if (r1Revealed) {
+    document.getElementById('r1Quiz').style.display = 'block';
+  }
+
+  document.getElementById('r1RevealBtn').onclick = () => {
+    r1Revealed = true;
+    renderStage1();
+  };
+
+  document.querySelectorAll('#r1Quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r1Quiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r1Feedback');
+      if (opt.dataset.v === 'hard') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "That tracks with the real numbers: whether a critical violation was found barely predicts the score on its own (in the real lecture data, that feature alone explains almost none of the variation). Notice restaurants with a critical violation that still scored in the Low range, right next to ones with no critical violation that scored much higher.";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#r1Quiz .opt[data-v="hard"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = "Look again at Bangkok Supper Club and Sushi Dairo -- both had a critical violation but still landed Low. Meanwhile Aloaf Cafe had no critical violation and landed High. That inconsistency is the real story: these clues genuinely don't predict score very well.";
+      }
+    };
+  });
+}
+
+/* ---------- Stage 2: Same Restaurants, One Bonus Clue ---------- */
+function renderStage2() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Round 2 &middot; Same Restaurants, One Bonus Clue</h2>
+    <p class="lede">Exact same 8 restaurants. This time you also get each one's official letter grade
+    (A/B/C). Guess Low/Medium/High again -- notice how it feels different this time -- then reveal.</p>
+    <div class="rest-grid" id="r2Grid"></div>
+    <div class="controls">
+      <button class="btn-nav" id="r2RevealBtn">Reveal actual scores</button>
+    </div>
+    <div class="quiz" id="r2Quiz" style="display:none;">
+      <div class="q">Why did one extra clue make this so much easier?</div>
+      <div class="options">
+        <div class="opt" data-v="strong">The letter grade is just a really strong, legitimate predictor of quality</div>
+        <div class="opt" data-v="leak">The letter grade is computed directly from the score itself</div>
+      </div>
+      <div class="feedback" id="r2Feedback"></div>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const grid = document.getElementById('r2Grid');
+  grid.innerHTML = RESTAURANTS.map(r => renderRestaurantCard(r, true, r2Revealed)).join('');
+  if (r2Revealed) {
+    document.getElementById('r2Quiz').style.display = 'block';
+  }
+
+  document.getElementById('r2RevealBtn').onclick = () => {
+    r2Revealed = true;
+    renderStage2();
+  };
+
+  document.querySelectorAll('#r2Quiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      document.querySelectorAll('#r2Quiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+      const fb = document.getElementById('r2Feedback');
+      if (opt.dataset.v === 'leak') {
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = "Exactly. NYC assigns the letter grade by directly thresholding the score: roughly 0-13 points is an A, 14-27 is a B, 28+ is a C. The grade isn't independent information about the restaurant -- it's the score itself, wearing a disguise. \"Predicting\" score from grade is close to being handed the answer.";
+      } else {
+        opt.classList.add('incorrect');
+        document.querySelector('#r2Quiz .opt[data-v="leak"]').classList.add('correct');
+        fb.className = 'feedback wrong';
+        fb.textContent = "It feels that way, but it's not a legitimate signal -- NYC computes the letter grade by directly thresholding the score (0-13 = A, 14-27 = B, 28+ = C). The grade is a coarser, relabeled version of the exact number you're trying to predict, not new information about the restaurant.";
+      }
+    };
+  });
+}
+
+/* ---------- Stage 3: Spot the Leak ---------- */
+const SORT_ITEMS = [
+  {
+    setup: "A loan default model uses <b>how many days the borrower is currently late on this loan's payment</b> to predict <b>whether the loan will default in the next 90 days</b>.",
+    answer: "leaky",
+    explain: "Being seriously late on a payment is often part of how \"default\" gets defined in the first place -- this feature is measuring the outcome as it's already happening, not something known safely beforehand."
+  },
+  {
+    setup: "A 311 model uses <b>the complaint type, recorded the moment the complaint was filed</b> to predict <b>how many hours until it's resolved</b>.",
+    answer: "safe",
+    explain: "Complaint type is known immediately, before any resolution happens, and it's set independently of how long resolution takes. This is the real Part 4 example from the lecture -- a big effect that turned out to be genuine."
+  },
+  {
+    setup: "A restaurant model uses <b>the restaurant's letter grade (A/B/C)</b> to predict <b>the restaurant's numeric inspection score</b>.",
+    answer: "leaky",
+    explain: "This is Round 2 -- the grade is computed directly from the score by NYC's own rule, so it's not independent information."
+  },
+  {
+    setup: "A spam filter uses <b>the number of words in the email</b> to predict <b>whether the email is spam</b>.",
+    answer: "safe",
+    explain: "Word count is known the moment the email arrives and isn't derived from a spam/not-spam label after the fact -- a normal (if possibly weak) feature."
+  },
+];
+function renderStage3() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Round 3 &middot; Spot the Leak</h2>
+    <p class="lede">Four more feature/target pairs, from different domains. For each one: safe, or
+    leaky?</p>
+    <div id="sortList"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const list = document.getElementById('sortList');
+  SORT_ITEMS.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'sort-item';
+    div.innerHTML = `
+      <div class="setup">${i+1}. ${item.setup}</div>
+      <div class="sort-options">
+        <div class="opt" data-v="safe">Safe</div>
+        <div class="opt" data-v="leaky">Leaky</div>
+      </div>
+      <div class="feedback" id="sortFeedback${i}"></div>
+    `;
+    list.appendChild(div);
+    div.querySelectorAll('.opt').forEach(opt => {
+      opt.onclick = () => {
+        div.querySelectorAll('.opt').forEach(o => o.classList.remove('correct','incorrect'));
+        const fb = document.getElementById('sortFeedback' + i);
+        if (opt.dataset.v === item.answer) {
+          opt.classList.add('correct');
+          fb.className = 'feedback right';
+          fb.textContent = item.explain;
+        } else {
+          opt.classList.add('incorrect');
+          div.querySelector(`.opt[data-v="${item.answer}"]`).classList.add('correct');
+          fb.className = 'feedback wrong';
+          fb.textContent = item.explain;
+        }
+      };
+    });
+  });
+}
+
+/* ---------- Stage 4: Wrap-Up ---------- */
+function renderStage4() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <ul class="recap-list">
+      <li><strong>Two different ways to leak.</strong> Round 0 was about <em>process</em> -- letting test
+      data influence a statistic (like an average) before you evaluate on it. Rounds 1-2 were about a
+      <em>feature</em> -- one that's secretly a disguised copy of the target itself. Both make a model
+      look better than it really is, for different reasons.</li>
+      <li><strong>The tell is the same question either way:</strong> could I have known this before the
+      outcome happened, and was it built independently of that outcome?</li>
+      <li><strong>Feeling suspicious of a result that's "too easy"</strong> is a real, useful instinct --
+      the letter grade round should have felt different from the critical-violation round, and that
+      difference in feeling is worth trusting.</li>
+    </ul>
+    <div class="callout">
+      <strong>Now open <code>lect07_regression.ipynb</code></strong> — Part 4 shows exactly why fitting
+      on training data only matters (Round 0's lesson, in code), and Part 6 runs the real numbers behind
+      Round 1-2's restaurant example, including the ablation that catches the leak.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label: 'Warm-Up · Whose Average Is It?', render: renderStage0},
+  {label: 'Round 1 · Guess the Score, Honestly', render: renderStage1},
+  {label: 'Round 2 · One Bonus Clue', render: renderStage2},
+  {label: 'Round 3 · Spot the Leak', render: renderStage3},
+  {label: 'Recap', render: renderStage4},
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
