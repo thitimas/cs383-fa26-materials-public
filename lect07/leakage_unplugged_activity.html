@@ -203,6 +203,7 @@ let r2Revealed = false;
 /* ---------- Stage 0: Whose Average Is It, Anyway? ---------- */
 let r0Mode = null;   // 'train' or 'peek'
 let r0Revealed = false;
+let r0GuessAnswer = null;   // 'typical' | 'somewhat' | 'dramatic'
 
 function renderStage0() {
   const p = document.createElement('div'); p.className = 'panel';
@@ -240,9 +241,26 @@ function renderStage0() {
       </div>
     ` : `<div class="small-note">Pick a version above to see the resulting average.</div>`}
 
-    <div class="controls">
-      <button class="btn-nav" id="r0RevealBtn">${r0Revealed ? 'Hide' : 'Reveal'} the 2 new complaints</button>
+    <div class="quiz" id="r0GuessQuiz">
+      <div class="q">A typical complaint, based on training data alone, takes about
+      ${r0TrainMean.toFixed(1)}h. Before you reveal anything -- guess how the 2 new complaints compare.</div>
+      <div class="options">
+        <div class="opt ${r0GuessAnswer==='typical' ? 'incorrect' : ''}" data-v="typical">Roughly typical (~${r0TrainMean.toFixed(0)}h)</div>
+        <div class="opt ${r0GuessAnswer==='somewhat' ? 'incorrect' : ''}" data-v="somewhat">Somewhat slower (~1.5-2x)</div>
+        <div class="opt ${r0GuessAnswer!==null ? 'correct' : ''}" data-v="dramatic">Dramatically slower (3x or more)</div>
+      </div>
+      <div class="feedback ${r0GuessAnswer===null ? '' : (r0GuessAnswer==='dramatic' ? 'right' : 'wrong')}" id="r0GuessFeedback">${
+        r0GuessAnswer===null ? '' :
+        r0GuessAnswer==='dramatic'
+          ? "Good instinct -- these two are real outliers, several times slower than a typical complaint. Click Reveal below to see exactly how far off."
+          : "Actually these two are dramatically slower than typical -- several times over. Click Reveal below to see exactly how far off."
+      }</div>
     </div>
+
+    <div class="controls">
+      <button class="btn-nav" id="r0RevealBtn" ${r0GuessAnswer===null ? 'disabled' : ''}>${r0Revealed ? 'Hide' : 'Reveal'} the 2 new complaints</button>
+    </div>
+    ${r0GuessAnswer===null ? `<div class="small-note">Make your guess above first.</div>` : ''}
 
     ${r0Revealed ? `
     <div class="compare-table">
@@ -298,7 +316,16 @@ function renderStage0() {
     };
   });
 
+  document.querySelectorAll('#r0GuessQuiz .opt').forEach(opt => {
+    opt.onclick = () => {
+      if (r0GuessAnswer !== null) return; // lock after first answer
+      r0GuessAnswer = opt.dataset.v;
+      renderStage0();
+    };
+  });
+
   document.getElementById('r0RevealBtn').onclick = () => {
+    if (r0GuessAnswer === null) return;
     r0Revealed = !r0Revealed;
     renderStage0();
   };
