@@ -99,7 +99,19 @@
   }
   .num-chip.train { border-color: var(--accent); background: #eef4fb; color: var(--accent); }
   .num-chip.test { border-color: var(--target-color); background: #fff8e8; color: #8a6100; }
+  .num-chip.mystery { border-color: #b8b2a3; background: #f0efe9; color: #8a8471; border-style: dashed; }
   .num-chip .tag { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; opacity: 0.75; }
+  .group-label { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin: 16px 0 0; }
+
+  .mode-row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  .mode-row .btn-pick { flex: 1; min-width: 220px; max-width: 320px; padding: 12px 14px; line-height: 1.4; text-align: left; }
+  .mode-row .btn-pick .mode-title { display: block; font-size: 14px; }
+  .mode-row .btn-pick .mode-sub { display: block; font-size: 11px; font-weight: 500; opacity: 0.75; margin-top: 2px; }
+
+  .result-box { margin-top: 16px; padding: 14px 16px; border-radius: 10px; font-size: 14px; line-height: 1.55; }
+  .result-box.train { background: #eef4fb; border-left: 4px solid var(--accent); }
+  .result-box.peek { background: #fff8e8; border-left: 4px solid var(--target-color); }
+  .result-box .avg { font-size: 22px; font-weight: 700; }
 
   .rest-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
   .rest-card {
@@ -189,25 +201,61 @@ let r1Revealed = false;
 let r2Revealed = false;
 
 /* ---------- Stage 0: Whose Average Is It, Anyway? ---------- */
+let r0Mode = null;   // 'train' or 'peek'
+let r0Revealed = false;
+
 function renderStage0() {
   const p = document.createElement('div'); p.className = 'panel';
+  const avg = r0Mode === 'train' ? r0TrainMean : (r0Mode === 'peek' ? r0AllMean : null);
+
   p.innerHTML = `
     <h2>Warm-Up &middot; Whose Average Is It, Anyway?</h2>
-    <p class="lede">Eight 311 complaints' resolution times, in hours. Six are "training" complaints you
-    already know about; two are "test" complaints -- pretend they haven't happened yet, and you're about
-    to check whether your model handles them well.</p>
-    <div class="num-grid" id="r0Grid"></div>
+    <p class="lede">Six 311 complaints you already know about, plus two brand-new complaints that just
+    came in -- pretend your model hasn't been tested on them yet. You won't see their actual resolution
+    times until you reveal them. First, pick how to compute "typical."</p>
+
+    <div class="group-label">Six training complaints (known)</div>
+    <div class="num-grid" id="r0TrainGrid"></div>
+
+    <div class="group-label">Two new complaints (not seen yet)</div>
+    <div class="num-grid" id="r0TestGrid"></div>
+
+    <div class="mode-row" id="r0ModeRow">
+      <div class="btn-pick ${r0Mode==='train' ? 'chosen' : ''}" data-mode="train">
+        <span class="mode-title">Fit the average using training only</span>
+        <span class="mode-sub">honest -- the 2 new complaints don't count yet</span>
+      </div>
+      <div class="btn-pick ${r0Mode==='peek' ? 'chosen' : ''}" data-mode="peek">
+        <span class="mode-title">Fit the average using all 8</span>
+        <span class="mode-sub">peek -- let the 2 new complaints help decide "typical"</span>
+      </div>
+    </div>
+
+    ${avg !== null ? `
+      <div class="result-box ${r0Mode}">
+        "Typical" resolution time under this version: <span class="avg">${avg.toFixed(2)} h</span><br>
+        ${r0Mode === 'train'
+          ? `Computed from the 6 training complaints only -- the 2 new ones had zero say in this number.`
+          : `Computed from all 8 -- the 2 new complaints, whatever they turn out to be, already nudged this number before you tested anything.`}
+      </div>
+    ` : `<div class="small-note">Pick a version above to see the resulting average.</div>`}
+
+    <div class="controls">
+      <button class="btn-nav" id="r0RevealBtn">${r0Revealed ? 'Hide' : 'Reveal'} the 2 new complaints</button>
+    </div>
+
+    ${r0Revealed ? `
     <div class="compare-table">
       <table>
-        <thead><tr><th></th><th>Average used to define "typical"</th><th>Test complaint (40h) looks like...</th></tr></thead>
+        <thead><tr><th></th><th>Average used to define "typical"</th><th>New complaint (40h) looks like...</th></tr></thead>
         <tbody>
           <tr>
-            <td>Version A &mdash; peeked at the test complaints</td>
+            <td>Peeked at the new complaints</td>
             <td class="test-col">${r0AllMean.toFixed(2)} h (all 8 numbers)</td>
             <td class="test-col">+${(40 - r0AllMean).toFixed(2)} h above "typical"</td>
           </tr>
           <tr>
-            <td>Version B &mdash; only used training complaints</td>
+            <td>Only used training complaints</td>
             <td class="train-col">${r0TrainMean.toFixed(2)} h (6 training numbers only)</td>
             <td class="train-col">+${(40 - r0TrainMean).toFixed(2)} h above "typical"</td>
           </tr>
@@ -215,47 +263,64 @@ function renderStage0() {
       </table>
     </div>
     <div class="quiz" id="r0Quiz">
-      <div class="q">In Version A, is testing your model on those same 2 complaints still a fair test of
-      how it handles complaints it's never seen?</div>
+      <div class="q">If you peeked at the new complaints while computing "typical," is testing your
+      model on those same complaints still a fair test of how it handles complaints it's never seen?</div>
       <div class="options">
         <div class="opt" data-v="yes">Yes, it's still a fair test</div>
-        <div class="opt" data-v="no">No -- the test complaints leaked into the setup</div>
+        <div class="opt" data-v="no">No -- the new complaints leaked into the setup</div>
       </div>
       <div class="feedback" id="r0Feedback"></div>
     </div>
+    ` : ''}
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 
-  const grid = document.getElementById('r0Grid');
+  const trainGrid = document.getElementById('r0TrainGrid');
   R0_TRAIN.forEach(v => {
     const c = document.createElement('div');
     c.className = 'num-chip train';
     c.innerHTML = `${v}h<span class="tag">train</span>`;
-    grid.appendChild(c);
-  });
-  R0_TEST.forEach(v => {
-    const c = document.createElement('div');
-    c.className = 'num-chip test';
-    c.innerHTML = `${v}h<span class="tag">test</span>`;
-    grid.appendChild(c);
+    trainGrid.appendChild(c);
   });
 
-  document.querySelectorAll('#r0Quiz .opt').forEach(opt => {
-    opt.onclick = () => {
-      document.querySelectorAll('#r0Quiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
-      const fb = document.getElementById('r0Feedback');
-      if (opt.dataset.v === 'no') {
-        opt.classList.add('correct');
-        fb.className = 'feedback right';
-        fb.textContent = "Right. The moment those 2 test complaints helped decide what \"typical\" means, they stopped being unseen -- Version A already knows something about them before the test even starts. Version B, using only the 6 training complaints, is the honest version: fit the average on training data only, then apply it to the test complaints without letting them influence it.";
-      } else {
-        opt.classList.add('incorrect');
-        document.querySelector('#r0Quiz .opt[data-v="no"]').classList.add('correct');
-        fb.className = 'feedback wrong';
-        fb.textContent = "Not quite -- Version A's average of 17.25h was built using the 2 test complaints themselves. That's like letting a student peek at 2 answers on the test while studying, then testing them on those same 2 questions. Version B (train-only) is the fair version.";
-      }
+  const testGrid = document.getElementById('r0TestGrid');
+  R0_TEST.forEach(v => {
+    const c = document.createElement('div');
+    c.className = r0Revealed ? 'num-chip test' : 'num-chip mystery';
+    c.innerHTML = r0Revealed ? `${v}h<span class="tag">new</span>` : `?h<span class="tag">new</span>`;
+    testGrid.appendChild(c);
+  });
+
+  document.querySelectorAll('#r0ModeRow .btn-pick').forEach(btn => {
+    btn.onclick = () => {
+      r0Mode = btn.dataset.mode;
+      renderStage0();
     };
   });
+
+  document.getElementById('r0RevealBtn').onclick = () => {
+    r0Revealed = !r0Revealed;
+    renderStage0();
+  };
+
+  if (r0Revealed) {
+    document.querySelectorAll('#r0Quiz .opt').forEach(opt => {
+      opt.onclick = () => {
+        document.querySelectorAll('#r0Quiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
+        const fb = document.getElementById('r0Feedback');
+        if (opt.dataset.v === 'no') {
+          opt.classList.add('correct');
+          fb.className = 'feedback right';
+          fb.textContent = "Right. The moment those 2 new complaints helped decide what \"typical\" means, they stopped being unseen -- the \"peek\" version already knows something about them before the test even starts. The training-only version is the honest one: fit the average on training data alone, then apply it to new complaints without letting them influence it.";
+        } else {
+          opt.classList.add('incorrect');
+          document.querySelector('#r0Quiz .opt[data-v="no"]').classList.add('correct');
+          fb.className = 'feedback wrong';
+          fb.textContent = "Not quite -- the \"peek\" average of 17.25h was built using the 2 new complaints themselves, before you ever \"tested\" anything. That's like letting a student see 2 of the test questions while studying, then testing them on those same 2 questions. The training-only version is the fair one.";
+        }
+      };
+    });
+  }
 }
 
 /* ---------- Restaurant card rendering (shared by Stage 1 & 2) ---------- */
