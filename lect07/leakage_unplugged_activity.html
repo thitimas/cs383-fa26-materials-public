@@ -160,8 +160,15 @@
   .sort-item .setup { font-size: 14px; line-height: 1.55; margin-bottom: 10px; }
   .sort-item .setup b { color: var(--ink); }
   .sort-item .sort-options { display: flex; gap: 10px; }
-  .sort-item .sort-options .opt { flex: 1; text-align: center; }
+  .sort-item .sort-options .opt {
+    flex: 1; text-align: center; background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .sort-item .sort-options .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .sort-item .sort-options .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
   .sort-item .feedback { margin-top: 10px; font-size: 13px; line-height: 1.5; min-height: 0; }
+  .sort-item .feedback.right { color: var(--correct-text); }
+  .sort-item .feedback.wrong { color: var(--incorrect-text); }
 </style>
 </head>
 <body>
@@ -544,9 +551,9 @@ function renderStage2() {
 /* ---------- Stage 3: Spot the Leak ---------- */
 const SORT_ITEMS = [
   {
-    setup: "A loan default model uses <b>how many days the borrower is currently late on this loan's payment</b> to predict <b>whether the loan will default in the next 90 days</b>.",
+    setup: "An online store's model uses <b>whether a return shipping label has already been printed for the order</b> to predict <b>whether the customer will return the product</b>.",
     answer: "leaky",
-    explain: "Being seriously late on a payment is often part of how \"default\" gets defined in the first place -- this feature is measuring the outcome as it's already happening, not something known safely beforehand."
+    explain: "A return label only gets printed once the customer has already decided to send the item back -- this feature is measuring the outcome after it's already started happening, not something known safely beforehand."
   },
   {
     setup: "A 311 model uses <b>the complaint type, recorded the moment the complaint was filed</b> to predict <b>how many hours until it's resolved</b>.",
@@ -564,43 +571,40 @@ const SORT_ITEMS = [
     explain: "Word count is known the moment the email arrives and isn't derived from a spam/not-spam label after the fact -- a normal (if possibly weak) feature."
   },
 ];
+let r3Choices = {};   // { itemIndex: 'safe' | 'leaky' }
+
 function renderStage3() {
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
     <h2>Round 3 &middot; Spot the Leak</h2>
-    <p class="lede">Four more feature/target pairs, from different domains. For each one: safe, or
-    leaky?</p>
+    <p class="lede">Four more feature/target pairs, from different domains. Click Safe or Leaky for
+    each one -- you'll see right away whether you got it.</p>
     <div id="sortList"></div>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 
   const list = document.getElementById('sortList');
   SORT_ITEMS.forEach((item, i) => {
+    const chosen = r3Choices[i];
+    const answered = chosen !== undefined;
     const div = document.createElement('div');
     div.className = 'sort-item';
     div.innerHTML = `
       <div class="setup">${i+1}. ${item.setup}</div>
       <div class="sort-options">
-        <div class="opt" data-v="safe">Safe</div>
-        <div class="opt" data-v="leaky">Leaky</div>
+        <div class="opt ${answered && item.answer==='safe' ? 'correct' : (chosen==='safe' ? 'incorrect' : '')}" data-v="safe">Safe</div>
+        <div class="opt ${answered && item.answer==='leaky' ? 'correct' : (chosen==='leaky' ? 'incorrect' : '')}" data-v="leaky">Leaky</div>
       </div>
-      <div class="feedback" id="sortFeedback${i}"></div>
+      <div class="feedback ${answered ? (chosen===item.answer ? 'right' : 'wrong') : ''}" id="sortFeedback${i}">${
+        answered ? (chosen===item.answer ? "Correct -- " : "Not quite -- ") + item.explain : ''
+      }</div>
     `;
     list.appendChild(div);
     div.querySelectorAll('.opt').forEach(opt => {
       opt.onclick = () => {
-        div.querySelectorAll('.opt').forEach(o => o.classList.remove('correct','incorrect'));
-        const fb = document.getElementById('sortFeedback' + i);
-        if (opt.dataset.v === item.answer) {
-          opt.classList.add('correct');
-          fb.className = 'feedback right';
-          fb.textContent = item.explain;
-        } else {
-          opt.classList.add('incorrect');
-          div.querySelector(`.opt[data-v="${item.answer}"]`).classList.add('correct');
-          fb.className = 'feedback wrong';
-          fb.textContent = item.explain;
-        }
+        if (r3Choices[i] !== undefined) return; // lock after first answer
+        r3Choices[i] = opt.dataset.v;
+        renderStage3();
       };
     });
   });
