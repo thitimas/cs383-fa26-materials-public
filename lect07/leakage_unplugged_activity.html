@@ -139,6 +139,23 @@
   }
   .rest-card .crit-badge.yes { background: var(--incorrect-bg); color: var(--incorrect-text); }
 
+  .guess-row { display: flex; gap: 4px; margin-top: 10px; }
+  .guess-btn {
+    flex: 1; font: inherit; font-size: 11px; font-weight: 700; text-align: center;
+    padding: 6px 3px; border-radius: 7px; border: 2px solid #cfcdc3; background: #fff;
+    color: var(--ink); cursor: pointer; box-shadow: none;
+  }
+  .guess-btn.chosen { border-color: var(--accent); background: #eef4fb; color: var(--accent); }
+  .guess-btn.correct { border-color: var(--correct-border); background: var(--correct-bg); color: var(--correct-text); }
+  .guess-btn.incorrect { border-color: var(--incorrect-border); background: var(--incorrect-bg); color: var(--incorrect-text); }
+  .guess-btn:disabled { cursor: default; }
+
+  .score-badge {
+    display: block; text-align: center; margin-top: 18px; padding: 10px 16px;
+    border-radius: 10px; background: #f5f4ef; font-weight: 700; font-size: 16px; color: var(--ink);
+  }
+  .score-badge .score-compare { font-weight: 600; font-size: 13px; color: var(--muted); }
+
   .sort-item { border: 2px solid #e2e0d8; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
   .sort-item .setup { font-size: 14px; line-height: 1.55; margin-bottom: 10px; }
   .sort-item .setup b { color: var(--ink); }
@@ -351,31 +368,60 @@ function renderStage0() {
 }
 
 /* ---------- Restaurant card rendering (shared by Stage 1 & 2) ---------- */
-function renderRestaurantCard(r, showGrade, revealed) {
+function bucketKey(score) {
+  if (score <= 13) return "low";
+  if (score <= 27) return "medium";
+  return "high";
+}
+const GUESS_BUCKETS = [["low","Low"],["medium","Med"],["high","High"]];
+
+function renderRestaurantCard(r, idx, showGrade, revealed, guesses) {
+  const guess = guesses[idx];
+  const actual = revealed ? bucketKey(r.score) : null;
   return `
     <div class="rest-card ${revealed ? 'revealed' : ''}">
       <div class="name">${r.name}</div>
       <div class="field"><b>${r.boro}</b> &middot; ${r.cuisine}</div>
       <span class="crit-badge ${r.critical ? 'yes' : ''}">${r.critical ? 'Critical violation found' : 'No critical violation'}</span>
       ${showGrade ? `<div><span class="grade-badge ${r.grade}">Grade ${r.grade}</span></div>` : ''}
+      <div class="guess-row" data-idx="${idx}">
+        ${GUESS_BUCKETS.map(([key,label]) => {
+          let cls = 'guess-btn';
+          if (guess === key) cls += ' chosen';
+          if (revealed && key === actual) cls += ' correct';
+          else if (revealed && guess === key) cls += ' incorrect';
+          return `<button type="button" class="${cls}" data-v="${key}" ${revealed ? 'disabled' : ''}>${label}</button>`;
+        }).join('')}
+      </div>
       <div class="score-reveal">Actual score: ${r.score} &mdash; ${bucketOf(r.score)}</div>
     </div>
   `;
 }
 
+function tallyGuesses(guesses) {
+  let correct = 0;
+  RESTAURANTS.forEach((r, i) => { if (guesses[i] === bucketKey(r.score)) correct++; });
+  return correct;
+}
+
 /* ---------- Stage 1: Guess the Score, Honestly ---------- */
+let r1Guesses = {};
+
 function renderStage1() {
   const p = document.createElement('div'); p.className = 'panel';
+  const allGuessed = Object.keys(r1Guesses).length === RESTAURANTS.length;
   p.innerHTML = `
     <h2>Round 1 &middot; Guess the Score, Honestly</h2>
     <p class="lede">Eight real NYC restaurants. For each one, using only its borough, cuisine, and
-    whether a critical violation was found, guess whether its inspection score will be
-    <strong>Low</strong> (A-range), <strong>Medium</strong> (B-range), or <strong>High</strong> (C-range).
-    Write your guesses down (or say them out loud), then reveal.</p>
+    whether a critical violation was found, click your guess -- <strong>Low</strong> (A-range),
+    <strong>Medium</strong> (B-range), or <strong>High</strong> (C-range) -- right on the card. Guess all
+    8, then reveal.</p>
     <div class="rest-grid" id="r1Grid"></div>
+    ${r1Revealed ? `<div class="score-badge">Your score: ${tallyGuesses(r1Guesses)} / ${RESTAURANTS.length}</div>` : ''}
     <div class="controls">
-      <button class="btn-nav" id="r1RevealBtn">Reveal actual scores</button>
+      <button class="btn-nav" id="r1RevealBtn" ${!allGuessed ? 'disabled' : ''}>Reveal actual scores</button>
     </div>
+    ${!allGuessed ? `<div class="small-note">Guess all 8 cards first.</div>` : ''}
     <div class="quiz" id="r1Quiz" style="display:none;">
       <div class="q">Be honest -- how did your guesses do?</div>
       <div class="options">
@@ -388,12 +434,22 @@ function renderStage1() {
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 
   const grid = document.getElementById('r1Grid');
-  grid.innerHTML = RESTAURANTS.map(r => renderRestaurantCard(r, false, r1Revealed)).join('');
+  grid.innerHTML = RESTAURANTS.map((r,i) => renderRestaurantCard(r, i, false, r1Revealed, r1Guesses)).join('');
   if (r1Revealed) {
     document.getElementById('r1Quiz').style.display = 'block';
   }
 
+  grid.querySelectorAll('.guess-btn').forEach(btn => {
+    btn.onclick = () => {
+      if (r1Revealed) return;
+      const idx = parseInt(btn.closest('.guess-row').dataset.idx, 10);
+      r1Guesses[idx] = btn.dataset.v;
+      renderStage1();
+    };
+  });
+
   document.getElementById('r1RevealBtn').onclick = () => {
+    if (!allGuessed) return;
     r1Revealed = true;
     renderStage1();
   };
@@ -417,16 +473,24 @@ function renderStage1() {
 }
 
 /* ---------- Stage 2: Same Restaurants, One Bonus Clue ---------- */
+let r2Guesses = {};
+
 function renderStage2() {
   const p = document.createElement('div'); p.className = 'panel';
+  const allGuessed = Object.keys(r2Guesses).length === RESTAURANTS.length;
   p.innerHTML = `
     <h2>Round 2 &middot; Same Restaurants, One Bonus Clue</h2>
     <p class="lede">Exact same 8 restaurants. This time you also get each one's official letter grade
-    (A/B/C). Guess Low/Medium/High again -- notice how it feels different this time -- then reveal.</p>
+    (A/B/C). Guess Low/Medium/High again on each card -- notice how it feels different this time -- then
+    reveal.</p>
     <div class="rest-grid" id="r2Grid"></div>
+    ${r2Revealed ? `<div class="score-badge">Your score: ${tallyGuesses(r2Guesses)} / ${RESTAURANTS.length}${
+      r1Revealed ? ` <span class="score-compare">(Round 1 was ${tallyGuesses(r1Guesses)} / ${RESTAURANTS.length})</span>` : ''
+    }</div>` : ''}
     <div class="controls">
-      <button class="btn-nav" id="r2RevealBtn">Reveal actual scores</button>
+      <button class="btn-nav" id="r2RevealBtn" ${!allGuessed ? 'disabled' : ''}>Reveal actual scores</button>
     </div>
+    ${!allGuessed ? `<div class="small-note">Guess all 8 cards first.</div>` : ''}
     <div class="quiz" id="r2Quiz" style="display:none;">
       <div class="q">Why did one extra clue make this so much easier?</div>
       <div class="options">
@@ -439,12 +503,22 @@ function renderStage2() {
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 
   const grid = document.getElementById('r2Grid');
-  grid.innerHTML = RESTAURANTS.map(r => renderRestaurantCard(r, true, r2Revealed)).join('');
+  grid.innerHTML = RESTAURANTS.map((r,i) => renderRestaurantCard(r, i, true, r2Revealed, r2Guesses)).join('');
   if (r2Revealed) {
     document.getElementById('r2Quiz').style.display = 'block';
   }
 
+  grid.querySelectorAll('.guess-btn').forEach(btn => {
+    btn.onclick = () => {
+      if (r2Revealed) return;
+      const idx = parseInt(btn.closest('.guess-row').dataset.idx, 10);
+      r2Guesses[idx] = btn.dataset.v;
+      renderStage2();
+    };
+  });
+
   document.getElementById('r2RevealBtn').onclick = () => {
+    if (!allGuessed) return;
     r2Revealed = true;
     renderStage2();
   };
