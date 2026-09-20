@@ -169,6 +169,17 @@
   .sort-item .feedback { margin-top: 10px; font-size: 13px; line-height: 1.5; min-height: 0; }
   .sort-item .feedback.right { color: var(--correct-text); }
   .sort-item .feedback.wrong { color: var(--incorrect-text); }
+
+  .score-legend { display: flex; gap: 10px; margin: 4px 0 18px; flex-wrap: wrap; }
+  .score-legend .leg-item {
+    flex: 1; min-width: 160px; border-radius: 10px; padding: 10px 12px;
+    font-size: 12px; line-height: 1.45; border: 2px solid #e2e0d8; background: #fff;
+  }
+  .score-legend .leg-item b { display: block; font-size: 13px; margin-bottom: 2px; }
+  .score-legend .leg-item.low { border-color: var(--correct-border); background: var(--correct-bg); color: var(--correct-text); }
+  .score-legend .leg-item.medium { border-color: var(--tricky-border); background: var(--tricky-bg); color: var(--tricky-text); }
+  .score-legend .leg-item.high { border-color: var(--incorrect-border); background: var(--incorrect-bg); color: var(--incorrect-text); }
+  .score-legend-note { text-align: center; font-size: 12px; color: var(--muted); margin: -10px 0 16px; }
 </style>
 </head>
 <body>
@@ -405,6 +416,15 @@ function renderRestaurantCard(r, idx, showGrade, revealed, guesses) {
   `;
 }
 
+const SCORE_LEGEND_HTML = `
+  <div class="score-legend">
+    <div class="leg-item low"><b>Low = 0-13 pts</b>Fewest violation points &middot; earns Grade A &middot; best inspection</div>
+    <div class="leg-item medium"><b>Medium = 14-27 pts</b>More violation points &middot; earns Grade B</div>
+    <div class="leg-item high"><b>High = 28+ pts</b>Most violation points &middot; earns Grade C &middot; worst inspection</div>
+  </div>
+  <div class="score-legend-note">Remember: the <em>score</em> is a violation-point count, so <strong>lower is better</strong> -- the opposite of a percentage grade.</div>
+`;
+
 function tallyGuesses(guesses) {
   let correct = 0;
   RESTAURANTS.forEach((r, i) => { if (guesses[i] === bucketKey(r.score)) correct++; });
@@ -423,6 +443,7 @@ function renderStage1() {
     whether a critical violation was found, click your guess -- <strong>Low</strong> (A-range),
     <strong>Medium</strong> (B-range), or <strong>High</strong> (C-range) -- right on the card. Guess all
     8, then reveal.</p>
+    ${SCORE_LEGEND_HTML}
     <div class="rest-grid" id="r1Grid"></div>
     ${r1Revealed ? `<div class="score-badge">Your score: ${tallyGuesses(r1Guesses)} / ${RESTAURANTS.length}</div>` : ''}
     <div class="controls">
@@ -490,6 +511,7 @@ function renderStage2() {
     <p class="lede">Exact same 8 restaurants. This time you also get each one's official letter grade
     (A/B/C). Guess Low/Medium/High again on each card -- notice how it feels different this time -- then
     reveal.</p>
+    ${SCORE_LEGEND_HTML}
     <div class="rest-grid" id="r2Grid"></div>
     ${r2Revealed ? `<div class="score-badge">Your score: ${tallyGuesses(r2Guesses)} / ${RESTAURANTS.length}${
       r1Revealed ? ` <span class="score-compare">(Round 1 was ${tallyGuesses(r1Guesses)} / ${RESTAURANTS.length})</span>` : ''
