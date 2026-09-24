@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 10 Unplugged Activity: Twenty Questions</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+  .btn-pick.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-pick.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .btn-pick.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .btn-pick.best { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+
+  .stepper-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+  .stepper-row button { min-width: 90px; }
+  .stepper-readout { font-weight: 700; font-size: 15px; min-width: 160px; text-align: center; }
+  .stepper-ssr { font-size: 22px; font-weight: 800; color: var(--accent); }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+
+  .compare-table { margin-top: 16px; }
+  .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table th, .compare-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e0d8; }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+  .compare-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .compare-table tbody td { font-weight: 700; }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
+  .recap-list li { margin-bottom: 10px; }
+  code { background: #f0efe9; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+
+  .vote-tally { display: flex; justify-content: center; gap: 18px; margin-top: 14px; flex-wrap: wrap; }
+  .vote-box { border-radius: 10px; padding: 10px 18px; text-align: center; min-width: 110px; font-weight: 700; }
+  .vote-box.pass { background: var(--correct-bg); color: var(--correct-text); }
+  .vote-box.fail { background: var(--incorrect-bg); color: var(--incorrect-text); }
+  .vote-box .n { display: block; font-size: 24px; }
+
+  .split-stats { display: flex; justify-content: center; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+  .split-box { border-radius: 10px; padding: 10px 16px; text-align: center; min-width: 130px; background: #f5f4ef; }
+  .split-box .lbl { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+  .split-box .val { font-size: 20px; font-weight: 800; margin-top: 4px; }
+
+  .tree-card {
+    display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+    background: #f5f4ef; border-radius: 12px; padding: 12px 14px; min-width: 84px;
+    opacity: 0; transform: translateY(6px); transition: opacity 0.35s, transform 0.35s;
+  }
+  .tree-card.shown { opacity: 1; transform: translateY(0); }
+  .tree-card .emoji { font-size: 26px; }
+  .tree-card .vote { font-weight: 800; font-size: 13px; }
+  .tree-card .vote.pass { color: var(--correct-text); }
+  .tree-card .vote.fail { color: var(--incorrect-text); }
+  .forest-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+
+  .boost-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 18px 0; }
+  .boost-dot {
+    width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; color: #fff; transition: background 0.3s, transform 0.3s;
+  }
+  .boost-dot.wrong { background: var(--incorrect-border); }
+  .boost-dot.right { background: var(--correct-border); transform: scale(1.1); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 10 Unplugged Activity — Twenty Questions</h1>
+  <p>No coding yet. You'll build a decision tree by hand on real reinspection data, see why a tree that
+  asks too many questions memorizes instead of learning, and get an intuitive preview of why many trees
+  voting (or correcting each other) tends to beat trusting just one.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Unplugged warm-up for Lecture 10 (Tree-Based Models)
+</footer>
+
+<script>
+/* ---------- data (verified against the actual Lecture 10 notebook, same toy set as Lecture 8) ---------- */
+const VIOLATIONS = [2, 0, 9, 8, 2, 9, 2, 8, 5, 3, 5, 0, 5, 2, 5, 3, 2, 5, 2, 5,
+                    7, 0, 5, 6, 0, 6, 6, 5, 8, 10, 4, 10, 9, 7, 0, 10, 4, 0, 8, 6];
+const DAYS_UNTIL = [258, 228, 273, 47, 323, 302, 322, 24, 256, 37, 24, 218, 24, 8, 341,
+                    114, 184, 229, 99, 310, 6, 351, 296, 374, 377, 137, 365, 104, 70,
+                    259, 155, 324, 225, 321, 167, 128, 298, 344, 347, 340];
+const PASSES_REINSPECTION = [1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0,
+                              0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0];
+
+// Candidate first-split questions, with stats verified in the notebook (Gini impurity, weighted by
+// group size -- lower is a "purer," better split). Overall Gini before any split: 0.480.
+const CANDIDATES = [
+  { q: "violations ≤ 5.5 ?", leftN: 24, leftPass: 12, rightN: 16, rightPass: 4, gini: 0.450 },
+  { q: "violations ≤ 3.0 ?", leftN: 14, leftPass: 10, rightN: 26, rightPass: 6, gini: 0.374 },
+  { q: "days_until_reinspection ≤ 100 ?", leftN: 9, leftPass: 0, rightN: 31, rightPass: 16, gini: 0.387 },
+  { q: "days_until_reinspection ≤ 161 ?", leftN: 14, leftPass: 0, rightN: 26, rightPass: 16, gini: 0.308 },
+];
+const BEST_IDX = 3; // days_until_reinspection <= 161 -- what the real tree in the notebook actually picks
+
+// Precomputed prediction grids (30x24, verified via DecisionTreeClassifier at each depth on this exact
+// data) -- '0' = predicts fail, '1' = predicts pass. Used to draw the same kind of colored-background
+// boundary the notebook's plot_decision_boundary() produces, without re-implementing a tree in JS.
+const GRID_NX = 30, GRID_NY = 24;
+const GRID_X0 = -1, GRID_X1 = 11, GRID_Y0 = -14, GRID_Y1 = 397;
+const DEPTH_GRIDS = {
+  1: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  2: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000",
+  3: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  99: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111100000000000000000000111111111111111111111111111111111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+};
+const DEPTH_INFO = {
+  1: { label: "max_depth = 1", acc: 0.750, leaves: 2 },
+  2: { label: "max_depth = 2", acc: 0.850, leaves: 4 },
+  3: { label: "max_depth = 3", acc: 0.925, leaves: 6 },
+  99: { label: "no limit (depth 7)", acc: 1.000, leaves: 12 },
+};
+
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function niceTicks(min, max, targetCount) {
+  if (max <= min) return [min];
+  const range = max - min;
+  const roughStep = range / targetCount;
+  const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const norm = roughStep / mag;
+  const step = (norm < 1.5) ? mag : (norm < 3) ? 2*mag : (norm < 7) ? 5*mag : 10*mag;
+  const start = Math.ceil(min/step - 1e-9) * step;
+  const ticks = [];
+  for (let t = start; t <= max + step*1e-6; t += step) ticks.push(Math.round(t*1e6)/1e6);
+  return ticks;
+}
+function fmtTick(v) {
+  let s = v.toFixed(2);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s;
+}
+
+/* shared chart geometry for the 40-restaurant scatter */
+const CW = 680, CH = 360, CPL = 55, CPR = 20, CPT = 20, CPB = 44;
+const CPLOTW = CW-CPL-CPR, CPLOTH = CH-CPT-CPB;
+const csx = v => CPL + (v-GRID_X0)/(GRID_X1-GRID_X0)*CPLOTW;
+const csy = d => CPT + CPLOTH - (d-GRID_Y0)/(GRID_Y1-GRID_Y0)*CPLOTH;
+
+function drawAxes(s) {
+  s.appendChild(svg('line', {x1:CPL, y1:CPT, x2:CPL, y2:CPT+CPLOTH, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:CPL, y1:CPT+CPLOTH, x2:CPL+CPLOTW, y2:CPT+CPLOTH, stroke:'#cfcdc3', 'stroke-width':2}));
+  niceTicks(GRID_X0, GRID_X1, 5).forEach(t => {
+    const tx = csx(t);
+    s.appendChild(svg('line', {x1:tx, y1:CPT+CPLOTH, x2:tx, y2:CPT+CPLOTH+5, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:tx, y:CPT+CPLOTH+18, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t); s.appendChild(lbl);
+  });
+  niceTicks(GRID_Y0, GRID_Y1, 5).forEach(t => {
+    const ty = csy(t);
+    s.appendChild(svg('line', {x1:CPL-5, y1:ty, x2:CPL, y2:ty, stroke:'#cfcdc3', 'stroke-width':1.5}));
+    const lbl = svg('text', {x:CPL-9, y:ty+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'});
+    lbl.textContent = fmtTick(t); s.appendChild(lbl);
+  });
+  const xl = svg('text', {x:CPL+CPLOTW/2, y:CH-8, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = 'Violations'; s.appendChild(xl);
+  const yl = svg('text', {x:16, y:CPT+CPLOTH/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 16 ${CPT+CPLOTH/2})`});
+  yl.textContent = 'Days until reinspection'; s.appendChild(yl);
+}
+function drawDots(s, highlightFn) {
+  VIOLATIONS.forEach((v,i) => {
+    const hi = highlightFn ? highlightFn(i) : false;
+    s.appendChild(svg('circle', {
+      cx:csx(v), cy:csy(DAYS_UNTIL[i]), r: hi ? 8 : 6,
+      fill: PASSES_REINSPECTION[i] ? '#2f9e56' : '#d64545',
+      stroke: hi ? '#1f2430' : '#fff', 'stroke-width': hi ? 2.5 : 1.5,
+    }));
+  });
+}
+
+/* ---------- Stage 0: Which Question Splits Best? ---------- */
+let chosenCandidate = null;
+function renderSplitChoice() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Warm-Up &middot; Which Question Splits Best?</h2>
+    <p class="lede">Same 40 restaurants from Lecture 8: violations racked up, and days until reinspection.
+    Green = passed reinspection, red = failed. A decision tree's first move is to pick <em>one</em> yes/no
+    question that separates pass from fail as cleanly as possible. Here are four candidates &mdash; click
+    one to see how it splits the data.</p>
+    <div id="splitChart"></div>
+    <div class="controls" id="splitOptions"></div>
+    <div id="splitResult"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const s = svg('svg', {width:CW, height:CH, viewBox:`0 0 ${CW} ${CH}`});
+  drawAxes(s);
+  drawDots(s);
+  document.getElementById('splitChart').appendChild(s);
+
+  const opts = document.getElementById('splitOptions');
+  CANDIDATES.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn-pick' + (chosenCandidate===i ? (i===BEST_IDX ? ' best' : ' chosen') : '');
+    b.textContent = c.q;
+    b.onclick = () => { chosenCandidate = i; renderSplitChoice(); };
+    opts.appendChild(b);
+  });
+
+  const result = document.getElementById('splitResult');
+  if (chosenCandidate === null) {
+    result.innerHTML = '';
+    return;
+  }
+  const c = CANDIDATES[chosenCandidate];
+  const leftPassRate = (c.leftPass / c.leftN * 100).toFixed(0);
+  const rightPassRate = (c.rightPass / c.rightN * 100).toFixed(0);
+  const isBest = chosenCandidate === BEST_IDX;
+  result.innerHTML = `
+    <div class="split-stats">
+      <div class="split-box"><div class="lbl">Yes group</div><div class="val">${c.leftPass}/${c.leftN} passed</div><div>(${leftPassRate}%)</div></div>
+      <div class="split-box"><div class="lbl">No group</div><div class="val">${c.rightPass}/${c.rightN} passed</div><div>(${rightPassRate}%)</div></div>
+      <div class="split-box"><div class="lbl">Weighted Gini</div><div class="val">${c.gini.toFixed(3)}</div><div>(lower = purer)</div></div>
+    </div>
+    <div class="callout ${isBest ? 'warm' : ''}">
+      ${isBest
+        ? `<strong>This is the one the real tree picks.</strong> "days_until_reinspection &le; 161" gives
+           the lowest Gini impurity of the four (0.308, vs. up to 0.450 for the others) &mdash; and look at
+           the "yes" group: <strong>0 out of 14</strong> restaurants passed. That's a perfectly pure group
+           from a single question: in this data, no restaurant reinspected within 161 days ever passed.`
+        : `Not bad, but not the best of these four &mdash; compare the Gini score to the others. Lower is
+           purer (closer to an all-pass or all-fail group). Try "days_until_reinspection &le; 161" next.`}
+    </div>
+  `;
+}
+
+/* ---------- Stage 1: How Deep Is Too Deep? ---------- */
+let currentDepth = 1;
+function renderDepthExplorer() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 1 &middot; How Deep Is Too Deep?</h2>
+    <p class="lede">The colored background shows what a decision tree would predict everywhere on the
+    chart, not just at the 40 training points &mdash; the same kind of picture
+    <code>plot_decision_boundary()</code> draws in the notebook. Try each depth and watch the boundary
+    (and the training accuracy) change.</p>
+    <div id="depthChart"></div>
+    <div class="stepper-row" id="depthButtons"></div>
+    <div id="depthReadout"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const s = svg('svg', {width:CW, height:CH, viewBox:`0 0 ${CW} ${CH}`});
+  const grid = DEPTH_GRIDS[currentDepth];
+  const cellW = CPLOTW / GRID_NX, cellH = CPLOTH / GRID_NY;
+  for (let row = 0; row < GRID_NY; row++) {
+    for (let col = 0; col < GRID_NX; col++) {
+      const idx = row * GRID_NX + col;
+      const v = grid[idx];
+      s.appendChild(svg('rect', {
+        x: CPL + col*cellW, y: CPT + row*cellH, width: cellW+0.5, height: cellH+0.5,
+        fill: v === '1' ? '#D6E4F0' : '#F7D9D6', opacity: 0.9,
+      }));
+    }
+  }
+  drawAxes(s);
+  drawDots(s);
+  document.getElementById('depthChart').appendChild(s);
+
+  const btnRow = document.getElementById('depthButtons');
+  [1,2,3,99].forEach(d => {
+    const b = document.createElement('button');
+    b.className = 'btn-pick' + (currentDepth===d ? ' chosen' : '');
+    b.textContent = DEPTH_INFO[d].label;
+    b.onclick = () => { currentDepth = d; renderDepthExplorer(); };
+    btnRow.appendChild(b);
+  });
+
+  const info = DEPTH_INFO[currentDepth];
+  const readout = document.getElementById('depthReadout');
+  const warn = currentDepth === 99;
+  readout.innerHTML = `
+    <div class="callout ${warn ? '' : 'warm'}" style="text-align:center; margin-top:18px;">
+      <strong>${info.leaves} leaves, ${(info.acc*100).toFixed(1)}% training accuracy.</strong>
+      ${warn
+        ? `Look closely at the boundary &mdash; it's carved little islands around individual points to
+           reach 100% training accuracy. That's not a sign of a great model; it's a tree that memorized
+           this exact set of 40 restaurants instead of learning the general pattern.`
+        : `Notice the boundary is still just a handful of rectangles &mdash; simple, but it's already
+           catching the big pattern (few violations + a long wait tends to pass).`}
+    </div>
+  `;
+}
+
+/* ---------- Stage 2: Bagging ---------- */
+const FOREST_VOTES = [
+  { tree: 1, vote: 'fail' }, { tree: 2, vote: 'pass' }, { tree: 3, vote: 'fail' },
+  { tree: 4, vote: 'fail' }, { tree: 5, vote: 'pass' },
+];
+let forestRevealed = 0; // how many tree cards shown so far
+function renderBagging() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 2 &middot; Bagging: Wisdom of the (Random) Crowd</h2>
+    <p class="lede">A new restaurant: 6 violations, 200 days until reinspection &mdash; right in the messy
+    middle of the chart, where individual trees tend to disagree. A random forest asks 5 different trees
+    (each grown on a different random slice of the training data) and lets them vote. Click to ask each
+    tree, one at a time.</p>
+    <div class="forest-row" id="forestRow"></div>
+    <div class="controls">
+      <button class="btn-nav" id="askBtn" ${forestRevealed>=5 ? 'disabled' : ''}>
+        ${forestRevealed===0 ? 'Ask Tree 1' : (forestRevealed<5 ? `Ask Tree ${forestRevealed+1}` : 'All Trees Asked')}
+      </button>
+      ${forestRevealed>0 ? '<button class="btn-nav back" id="resetForestBtn">Reset</button>' : ''}
+    </div>
+    <div id="forestTally"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const row = document.getElementById('forestRow');
+  FOREST_VOTES.forEach((fv, i) => {
+    const card = document.createElement('div');
+    card.className = 'tree-card' + (i < forestRevealed ? ' shown' : '');
+    card.innerHTML = `<div class="emoji">🌳</div><div>Tree ${fv.tree}</div><div class="vote ${fv.vote}">${i < forestRevealed ? (fv.vote==='pass'?'PASS':'FAIL') : '?'}</div>`;
+    row.appendChild(card);
+  });
+
+  document.getElementById('askBtn').onclick = () => {
+    if (forestRevealed < 5) { forestRevealed++; renderBagging(); }
+  };
+  const resetBtn = document.getElementById('resetForestBtn');
+  if (resetBtn) resetBtn.onclick = () => { forestRevealed = 0; renderBagging(); };
+
+  const tally = document.getElementById('forestTally');
+  if (forestRevealed === 0) {
+    tally.innerHTML = '';
+  } else {
+    const seen = FOREST_VOTES.slice(0, forestRevealed);
+    const passVotes = seen.filter(v => v.vote==='pass').length;
+    const failVotes = seen.length - passVotes;
+    let msg;
+    if (forestRevealed < 5) {
+      msg = `${passVotes} pass, ${failVotes} fail so far &mdash; individual trees are split. Keep going.`;
+    } else {
+      const winner = passVotes > failVotes ? 'FAIL is wrong, PASS wins' : 'FAIL wins';
+      msg = `<strong>Final vote: ${failVotes} fail, ${passVotes} pass &rarr; the forest predicts FAIL.</strong>
+             Two of the five trees said "pass," probably chasing some quirk in the particular random sample
+             of restaurants they happened to see. Voting absorbed that disagreement instead of committing to
+             any one tree's mistake &mdash; that's the entire point of bagging.`;
+    }
+    tally.innerHTML = `
+      <div class="vote-tally">
+        <div class="vote-box pass"><span class="n">${passVotes}</span>pass votes</div>
+        <div class="vote-box fail"><span class="n">${failVotes}</span>fail votes</div>
+      </div>
+      <div class="callout ${forestRevealed<5 ? '' : 'warm'}" style="text-align:center;">${msg}</div>
+    `;
+  }
+}
+
+/* ---------- Stage 3: Boosting ---------- */
+// 8 illustrative restaurants; each round's tree fixes some of the previous round's mistakes.
+const BOOST_LABELS = ['R1','R2','R3','R4','R5','R6','R7','R8'];
+const BOOST_ROUNDS = [
+  { wrong: [0,1,2,3,4,5,6,7], note: "Round 0: the very first guess &mdash; predict \"fail\" for everyone, since fail is the majority class. 8 mistakes." },
+  { wrong: [0,1,4],           note: "Round 1: a small tree is trained just to fix Round 0's mistakes. Down to 3 mistakes." },
+  { wrong: [4],                note: "Round 2: another small tree targets what's still wrong. Down to 1 mistake." },
+  { wrong: [],                  note: "Round 3: one more correction, and the ensemble gets everyone right &mdash; on this small illustrative set, at least." },
+];
+let boostRound = 0;
+function renderBoosting() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 2 &middot; Boosting: Fixing the Last Mistake</h2>
+    <p class="lede">Eight illustrative restaurants. Instead of training 5 trees independently and voting
+    (bagging), gradient boosting trains one small tree at a time, each one aimed specifically at whatever
+    the ensemble still gets wrong. Click "Add next tree" to watch the mistakes shrink round by round.</p>
+    <div class="boost-row" id="boostRow"></div>
+    <div class="controls">
+      <button class="btn-nav" id="boostNextBtn" ${boostRound>=BOOST_ROUNDS.length-1 ? 'disabled' : ''}>Add next tree</button>
+      ${boostRound>0 ? '<button class="btn-nav back" id="boostResetBtn">Reset</button>' : ''}
+    </div>
+    <div class="callout" id="boostNote" style="text-align:center;"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const row = document.getElementById('boostRow');
+  const wrongSet = new Set(BOOST_ROUNDS[boostRound].wrong);
+  BOOST_LABELS.forEach((lbl, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'boost-dot ' + (wrongSet.has(i) ? 'wrong' : 'right');
+    dot.textContent = wrongSet.has(i) ? '✕' : '✓';
+    row.appendChild(dot);
+  });
+
+  document.getElementById('boostNextBtn').onclick = () => {
+    if (boostRound < BOOST_ROUNDS.length-1) { boostRound++; renderBoosting(); }
+  };
+  const resetBtn = document.getElementById('boostResetBtn');
+  if (resetBtn) resetBtn.onclick = () => { boostRound = 0; renderBoosting(); };
+
+  document.getElementById('boostNote').textContent = BOOST_ROUNDS[boostRound].note;
+}
+
+/* ---------- Stage 4: Recap ---------- */
+function renderTreeSummary() {
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <ul class="recap-list">
+      <li>A <strong>decision tree</strong> predicts by asking a sequence of yes/no questions, each one
+      picked to split the data as "purely" as possible. Its boundary is always made of axis-aligned
+      rectangles.</li>
+      <li>An unrestricted tree keeps asking questions until every training point is isolated &mdash;
+      100% training accuracy, but it's memorized the training set, not learned the pattern.
+      <code>max_depth</code> reins that in.</li>
+      <li>A <strong>random forest</strong> grows many trees on random samples of the data and features,
+      then lets them vote (<strong>bagging</strong>) &mdash; individual trees' overfitting tends to cancel
+      out in the average.</li>
+      <li><strong>Gradient boosting</strong> (what XGBoost implements) builds trees one at a time, each
+      one correcting whatever the ensemble so far still gets wrong.</li>
+    </ul>
+    <div class="compare-table">
+      <table>
+        <thead><tr><th></th><th>Single tree</th><th>Random forest</th><th>Gradient boosting</th></tr></thead>
+        <tbody>
+          <tr><td>Trees built</td><td>one</td><td>many, independently</td><td>many, in sequence</td></tr>
+          <tr><td>Combines by</td><td>&mdash;</td><td>majority vote</td><td>additive correction</td></tr>
+          <tr><td>Overfitting risk</td><td>high if unrestricted</td><td>lower, not zero</td><td>controlled by learning rate / rounds</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <strong>Now open <code>lect10_tree_models.ipynb</code></strong> &mdash; Part 1 fits real decision
+      trees on this exact toy dataset, Part 2 builds the random forest, and Part 3 tests all three
+      approaches (plus feature importance) against real NYC restaurant inspection data.
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  {label: 'Warm-Up · Which Question Splits Best?', render: renderSplitChoice},
+  {label: 'Part 1 · How Deep Is Too Deep?', render: renderDepthExplorer},
+  {label: 'Part 2 · Bagging', render: renderBagging},
+  {label: 'Part 2 · Boosting', render: renderBoosting},
+  {label: 'Recap', render: renderTreeSummary},
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i<current ? ' done' : (i===current ? ' active' : ''));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById('stageLabel').textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById('backBtn').disabled = current===0;
+  document.getElementById('nextBtn').textContent = current===STAGES.length-1 ? 'Restart' : 'Next →';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick = () => { if (current>0) { current--; render(); } };
+document.getElementById('nextBtn').onclick = () => {
+  if (current < STAGES.length-1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
