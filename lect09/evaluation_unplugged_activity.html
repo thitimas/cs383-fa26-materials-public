@@ -61,7 +61,7 @@
 
   .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
   .quiz .q { font-weight: 700; margin-bottom: 10px; }
-  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   .quiz .opt {
     background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
     padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
@@ -78,6 +78,7 @@
   }
   .callout strong { color: var(--accent); }
   .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+  .callout.warm strong { color: var(--tricky-text); }
 
   .compare-table { margin-top: 16px; }
   .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -121,15 +122,17 @@
   .dot-legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); }
   .dot-legend span { display: inline-flex; align-items: center; gap: 5px; }
   .dot-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  .scenario-quote { font-style: italic; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>Lecture 9 Unplugged Activity — Precision, Recall, and the Cost of Being Wrong</h1>
-  <p>No coding yet. Twenty transactions, two of them fraud. Watch a model that does nothing score 90%
-  accuracy, meet the confusion matrix, drag a threshold and watch precision and recall trade off live,
-  then build a ROC curve one threshold at a time.</p>
+  <p>No coding yet. Twenty transactions, two of them fraud. See why 90% accuracy isn't always impressive,
+  practice telling apart the four kinds of predictions, meet the confusion matrix, move a threshold and
+  watch what changes, then build a ROC curve one point at a time.</p>
 </header>
 
 <div id="progressWrap">
@@ -171,9 +174,8 @@ function confusionAt(threshold) {
 function metricsFrom(cm) {
   const precision = (cm.tp+cm.fp) ? cm.tp/(cm.tp+cm.fp) : 0;
   const recall = (cm.tp+cm.fn) ? cm.tp/(cm.tp+cm.fn) : 0;
-  const f1 = (precision+recall) ? 2*precision*recall/(precision+recall) : 0;
   const fpr = N_NEG ? cm.fp/N_NEG : 0;
-  return {precision, recall, f1, fpr, tpr: recall};
+  return {precision, recall, fpr, tpr: recall};
 }
 function fmtPct(v) { return (v*100).toFixed(0) + '%'; }
 function fmt3(v) { return v.toFixed(3); }
@@ -204,7 +206,7 @@ function renderLazy() {
       <div class="q">Is 90% accuracy here actually impressive?</div>
       <div class="options">
         <div class="opt" data-v="yes">Yes, that's a strong result</div>
-        <div class="opt" data-v="no">No, it's the trivial baseline</div>
+        <div class="opt" data-v="no">No — it just predicted the majority class every time.</div>
       </div>
       <div class="feedback" id="lazyFeedback"></div>
     </div>
@@ -226,25 +228,106 @@ function renderLazy() {
       if (opt.dataset.v === 'no') {
         opt.classList.add('correct');
         fb.className = 'feedback right';
-        fb.textContent = "Exactly -- with fraud this rare (10% of transactions), predicting \"not fraud\" every time gets you 90% for free. Any real model has to clear this bar, not just clear 50%, and accuracy alone can't tell a model that learned something apart from one that didn't.";
+        fb.textContent = "Exactly -- this classifier never looked at the data. It just predicted the majority class (\"not fraud\") every single time, and fraud is rare here (10% of transactions), so that alone was worth 90%. Accuracy can be misleading, especially when one class is much more common than the other.";
       } else {
         opt.classList.add('incorrect');
         document.querySelector('#lazyQuiz .opt[data-v="no"]').classList.add('correct');
         fb.className = 'feedback wrong';
-        fb.textContent = "This 90% came from a model that never even looked at the data -- it's just the majority-class baseline, made possible because fraud is rare here (10%). It tells you nothing about whether a model actually learned anything.";
+        fb.textContent = "Look again -- this \"model\" predicted \"not fraud\" for every transaction, without looking at any features. It just predicted the majority class every time. Accuracy can be misleading like this, especially when the classes are imbalanced.";
       }
     };
   });
 }
 
-/* ---------- Stage 1: Meet the Confusion Matrix ---------- */
+/* ---------- Stage 1: Practice -- What Kind of Prediction Is This? ---------- */
+const TPFPFN_SCENARIOS = [
+  { actual: 'Fraud', predicted: 'Fraud', answer: 'TP',
+    explain: 'The model predicted Fraud (Positive) and it actually was Fraud, so the prediction was correct (True). That’s a True Positive.' },
+  { actual: 'Fraud', predicted: 'Not Fraud', answer: 'FN',
+    explain: 'The model predicted Not Fraud (Negative), but it actually was Fraud, so the prediction was wrong (False). That’s a False Negative -- a missed fraud case.' },
+  { actual: 'Not Fraud', predicted: 'Fraud', answer: 'FP',
+    explain: 'The model predicted Fraud (Positive), but it actually was not fraud, so the prediction was wrong (False). That’s a False Positive -- a false alarm.' },
+  { actual: 'Not Fraud', predicted: 'Not Fraud', answer: 'TN',
+    explain: 'The model predicted Not Fraud (Negative) and it actually was not fraud, so the prediction was correct (True). That’s a True Negative.' },
+  { natural: 'The bank flagged a transaction as fraud, but it was actually legitimate.', predicted: 'Fraud', answer: 'FP',
+    explain: 'Flagging it as fraud means the model predicted Fraud (Positive) -- but it was wrong (False), since the transaction was actually legitimate. That’s a False Positive.' },
+];
+let practiceIndex = 0;
+
+function renderTPFPFN() {
+  const s = TPFPFN_SCENARIOS[practiceIndex];
+  const isLast = practiceIndex >= TPFPFN_SCENARIOS.length - 1;
+  const factsHtml = s.natural
+    ? `<p class="lede scenario-quote">"${s.natural}"</p>`
+    : `<p class="lede">Actual: <strong>${s.actual}</strong> &nbsp;&middot;&nbsp; Model predicted: <strong>${s.predicted}</strong></p>`;
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Practice &middot; What Kind of Prediction Is This?</h2>
+    <div class="callout">
+      <strong>Positive</strong> = Fraud &nbsp;&middot;&nbsp; <strong>Negative</strong> = Not Fraud<br>
+      <strong>True</strong> = the model's prediction was correct &nbsp;&middot;&nbsp;
+      <strong>False</strong> = the model's prediction was wrong<br><br>
+      Positive does <strong>not</strong> mean good -- here it simply means Fraud.
+    </div>
+    <div class="quiz" id="practiceQuiz">
+      <div class="q">Scenario ${practiceIndex+1} of ${TPFPFN_SCENARIOS.length}</div>
+      ${factsHtml}
+      <p class="small-note">Reminder: Positive/Negative = what the model predicted &middot;
+      True/False = whether the prediction was correct</p>
+      <div class="options" id="practiceOptions">
+        <div class="opt" data-v="TP">TP</div>
+        <div class="opt" data-v="TN">TN</div>
+        <div class="opt" data-v="FP">FP</div>
+        <div class="opt" data-v="FN">FN</div>
+      </div>
+      <div class="feedback" id="practiceFeedback"></div>
+    </div>
+    <div class="controls">
+      <button class="btn-nav" id="practiceNextBtn" ${isLast ? 'style="display:none;"' : ''} disabled>Next scenario &rarr;</button>
+    </div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  let solved = false;
+  const nextBtn = document.getElementById('practiceNextBtn');
+
+  document.querySelectorAll('#practiceOptions .opt').forEach(opt => {
+    opt.onclick = () => {
+      if (solved) return;
+      const fb = document.getElementById('practiceFeedback');
+      document.querySelectorAll('#practiceOptions .opt').forEach(o => o.classList.remove('incorrect'));
+      if (opt.dataset.v === s.answer) {
+        solved = true;
+        opt.classList.add('correct');
+        fb.className = 'feedback right';
+        fb.textContent = s.explain + (isLast
+          ? " You've now worked through all four cases, plus one tricky one. Click Next below to continue to the confusion matrix."
+          : '');
+        if (!isLast) nextBtn.disabled = false;
+      } else {
+        opt.classList.add('incorrect');
+        const posneg = s.predicted === 'Fraud' ? 'Positive' : 'Negative';
+        fb.className = 'feedback wrong';
+        fb.textContent = `The model predicted ${s.predicted}, so this is ${posneg}. Was that prediction correct? Try again.`;
+      }
+    };
+  });
+
+  nextBtn.onclick = () => {
+    if (practiceIndex < TPFPFN_SCENARIOS.length - 1) { practiceIndex++; renderTPFPFN(); }
+  };
+}
+
+/* ---------- Stage 2: Meet the Confusion Matrix ---------- */
 function renderConfusionMatrix() {
   const cm = confusionAt(0.5);
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
-    <h2>Part 1 &middot; Meet the Confusion Matrix</h2>
-    <p class="lede">Same 20 transactions, but now a real model has scored each one with a risk probability.
-    Apply the usual 0.5 cutoff and every prediction lands in one of four buckets.</p>
+    <h2>Meet the Confusion Matrix</h2>
+    <p class="lede">You just practiced telling apart TP, TN, FP, and FN one at a time. Now let's organize
+    these four types of predictions into one table. Same 20 transactions, but now a real model has scored
+    each one with a risk probability. Apply the usual 0.5 cutoff and every prediction lands in one of four
+    buckets.</p>
     <div class="cm-grid">
       <div class="cm-corner"></div>
       <div class="cm-label">Predicted: not fraud</div>
@@ -257,17 +340,25 @@ function renderConfusionMatrix() {
       <div class="cm-cell tp">TP<span class="n">${cm.tp}</span></div>
     </div>
     <div class="dot-legend">
-      <span><i style="background:var(--correct-border)"></i> TP: caught fraud</span>
-      <span><i style="background:#cfd8e3"></i> TN: cleared, correctly</span>
-      <span><i style="background:var(--incorrect-border)"></i> FP: false alarm</span>
-      <span><i style="background:var(--target-color)"></i> FN: missed fraud</span>
+      <span><i style="background:var(--correct-border)"></i> TP = caught fraud</span>
+      <span><i style="background:#cfd8e3"></i> TN = correctly cleared</span>
+      <span><i style="background:var(--incorrect-border)"></i> FP = false alarm</span>
+      <span><i style="background:var(--target-color)"></i> FN = missed fraud</span>
+    </div>
+    <div class="compare-table">
+      <table>
+        <thead><tr><th>Model</th><th>Accuracy</th><th>Fraud caught</th></tr></thead>
+        <tbody>
+          <tr><td>Lazy classifier (Warm-Up)</td><td>90%</td><td>0 of ${N_POS}</td></tr>
+          <tr><td>This model</td><td>90%</td><td>${cm.tp} of ${N_POS}</td></tr>
+        </tbody>
+      </table>
     </div>
     <div class="quiz" id="cmQuiz">
-      <div class="q">Accuracy here is (${cm.tp}+${cm.tn})/20 = 90% -- identical to the lazy classifier.
-      Did this model actually learn anything?</div>
+      <div class="q">Both models have 90% accuracy. Are they making the same kinds of predictions?</div>
       <div class="options">
-        <div class="opt" data-v="yes">Yes -- look past accuracy</div>
-        <div class="opt" data-v="no">No, same accuracy means same model</div>
+        <div class="opt" data-v="same">Yes, same predictions</div>
+        <div class="opt" data-v="diff">No, they're catching different things</div>
       </div>
       <div class="feedback" id="cmFeedback"></div>
     </div>
@@ -278,51 +369,74 @@ function renderConfusionMatrix() {
     opt.onclick = () => {
       document.querySelectorAll('#cmQuiz .opt').forEach(o => o.classList.remove('correct','incorrect'));
       const fb = document.getElementById('cmFeedback');
-      if (opt.dataset.v === 'yes') {
+      if (opt.dataset.v === 'diff') {
         opt.classList.add('correct');
         fb.className = 'feedback right';
-        fb.textContent = "Right. This model caught 1 of the 2 fraud cases (TP=1) and only raised 1 false alarm (FP=1) -- real, if imperfect, signal. The lazy classifier caught zero fraud, ever. Same accuracy, completely different confusion matrix -- which is exactly why accuracy alone can't be the whole story.";
+        fb.textContent = `Right. Same 90% accuracy, but the lazy classifier caught 0 of ${N_POS} fraud cases -- it never flags anything. This model caught ${cm.tp} of ${N_POS} -- real, if imperfect, signal. The confusion matrix is what makes that difference visible; accuracy alone hides it.`;
       } else {
         opt.classList.add('incorrect');
-        document.querySelector('#cmQuiz .opt[data-v="yes"]').classList.add('correct');
+        document.querySelector('#cmQuiz .opt[data-v="diff"]').classList.add('correct');
         fb.className = 'feedback wrong';
-        fb.textContent = "Look at TP: this model actually caught 1 real fraud case, something the lazy classifier never does. Same accuracy (90%) can hide very different confusion matrices -- that's the whole point of looking past the single number.";
+        fb.textContent = `Look at the table above: the lazy classifier caught 0 of ${N_POS} fraud cases, this model caught ${cm.tp} of ${N_POS}. Same accuracy (90%), very different behavior -- that's exactly what the confusion matrix reveals and accuracy alone hides.`;
       }
     };
   });
 }
 
-/* ---------- Stage 2: Precision vs Recall Tug-of-War ---------- */
+/* ---------- Stage 3: Move the Threshold: What Changes? ---------- */
 let threshold = 0.5;
+let tugAnswered = null; // null | 'more' | 'fewer'
+
 function renderTugOfWar() {
   const p = document.createElement('div'); p.className = 'panel';
   const cm = confusionAt(threshold);
   const m = metricsFrom(cm);
+  const predictText = tugAnswered === 'more'
+    ? 'Right -- lowering the bar means more risk scores clear it, so more transactions get flagged.'
+    : (tugAnswered === 'fewer'
+      ? 'Actually the opposite -- lowering the bar means MORE transactions clear it and get flagged.'
+      : '');
+  const predictClass = tugAnswered === 'more' ? 'right' : (tugAnswered === 'fewer' ? 'wrong' : '');
   p.innerHTML = `
-    <h2>Part 2 &middot; Precision vs. Recall Tug-of-War</h2>
-    <p class="lede">Drag the threshold. Lowering it flags more transactions as fraud -- recall can only
-    go up (or hold steady); precision usually pays for it.</p>
+    <h2>Move the Threshold: What Changes?</h2>
+    <p class="lede">A model's risk scores don't change. The <strong>threshold</strong> -- the cutoff we
+    use to turn a risk score into a "fraud" / "not fraud" decision -- is something we choose.</p>
+    <div class="quiz" id="tugPredictQuiz">
+      <div class="q">Before you touch the slider: if we LOWER the threshold, what do you think will happen?</div>
+      <div class="options">
+        <div class="opt ${tugAnswered==='more'?'correct':''}" data-v="more">More transactions will be flagged</div>
+        <div class="opt ${tugAnswered==='fewer'?'incorrect':''}" data-v="fewer">Fewer transactions will be flagged</div>
+      </div>
+      <div class="feedback ${predictClass}">${predictText}</div>
+    </div>
     <div class="dot-grid" id="tugGrid"></div>
     <div class="slider-row">
       <input type="range" id="threshSlider" min="0.05" max="0.65" step="0.01" value="${threshold}">
       <div>Threshold: <strong>${threshold.toFixed(2)}</strong> &mdash; ${cm.tp+cm.fp} transaction${cm.tp+cm.fp===1?'':'s'} flagged</div>
     </div>
     <div class="metric-row">
-      <div class="metric-box">Precision<span class="n">${fmt3(m.precision)}</span></div>
-      <div class="metric-box">Recall<span class="n">${fmt3(m.recall)}</span></div>
-      <div class="metric-box">F1<span class="n">${fmt3(m.f1)}</span></div>
+      <div class="metric-box">Fraud caught<span class="n">${cm.tp} of ${N_POS}</span></div>
+      <div class="metric-box">False alarms<span class="n">${cm.fp}</span></div>
     </div>
-    <div class="callout ${threshold < 0.4 ? 'warm' : ''}">
-      ${threshold >= 0.45
-        ? `<strong>High threshold, cautious model.</strong> Only the highest-risk transactions get
-           flagged. Few false alarms, but real fraud below this bar slips through uncaught.`
-        : `<strong>Low threshold, aggressive model.</strong> More transactions get a second look,
-           catching more real fraud -- but dragging in more innocent transactions along the way.`}
-      For fraud, missing a real case usually costs more than one extra verification text -- so which
-      error would <em>you</em> rather make here?
+    <div class="callout">
+      <strong>Recall</strong> -- "Of the real fraud cases, how many did we catch?" &rarr;
+      ${cm.tp} of ${N_POS} = ${fmtPct(m.recall)}<br><br>
+      <strong>Precision</strong> -- "Of everything we flagged as fraud, how many actually were fraud?"
+      &rarr; ${cm.tp} of ${cm.tp+cm.fp} = ${fmtPct(m.precision)}
+    </div>
+    <div class="callout warm">
+      There's no single "best" threshold -- it depends on what happens after a flag.<br><br>
+      If a fraud flag only triggers a quick verification text, we might tolerate more false alarms to
+      catch more fraud.<br>
+      But what if a fraud flag automatically freezes someone's account?<br><br>
+      <strong>Would you choose the same threshold in both cases?</strong>
     </div>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  document.querySelectorAll('#tugPredictQuiz .opt').forEach(opt => {
+    opt.onclick = () => { tugAnswered = opt.dataset.v; renderTugOfWar(); };
+  });
 
   const grid = document.getElementById('tugGrid');
   RISK_SCORE.forEach((score, i) => {
@@ -345,7 +459,7 @@ function renderTugOfWar() {
   };
 }
 
-/* ---------- Stage 3: Build the ROC Curve ---------- */
+/* ---------- Stage 4: Build the ROC Curve ---------- */
 const ROC_THRESHOLDS = [0.65, 0.55, 0.45, 0.35, 0.25, 0.15, 0.05];
 let rocStep = 0;
 function renderROC() {
@@ -353,24 +467,31 @@ function renderROC() {
   const pts = ROC_THRESHOLDS.slice(0, rocStep+1).map(t => {
     const cm = confusionAt(t);
     const m = metricsFrom(cm);
-    return {t, fpr: m.fpr, tpr: m.tpr};
+    return {t, cm, fpr: m.fpr, tpr: m.tpr};
   });
-  const current = pts[pts.length-1];
+  const cur = pts[pts.length-1];
+  const isLast = rocStep >= ROC_THRESHOLDS.length-1;
   p.innerHTML = `
-    <h2>Part 3 &middot; Build the ROC Curve, One Threshold at a Time</h2>
-    <p class="lede">Each click sweeps the threshold lower, plotting (False Positive Rate, True Positive
-    Rate) at that threshold. Watch the curve take shape.</p>
+    <h2>Build the ROC Curve, One Threshold at a Time</h2>
+    <p class="lede">Two plain-English questions, asked at every threshold:</p>
+    <div class="callout">
+      <strong>True Positive Rate (TPR)</strong> -- "Of the real fraud cases, what fraction did we catch?"<br>
+      <strong>False Positive Rate (FPR)</strong> -- "Of the legitimate transactions, what fraction did we
+      falsely flag?"
+    </div>
     <div id="rocChart"></div>
     <div class="controls">
-      <button class="btn-nav" id="rocNext" ${rocStep>=ROC_THRESHOLDS.length-1?'disabled':''}>Plot next threshold &rarr;</button>
+      <button class="btn-nav" id="rocNext" ${isLast?'disabled':''}>Plot next threshold &rarr;</button>
       <button class="btn-nav back" id="rocReset">Reset</button>
     </div>
     <div class="callout">
-      Threshold = <strong>${current.t.toFixed(2)}</strong>: FPR = ${fmt3(current.fpr)}, TPR (recall) =
-      ${fmt3(current.tpr)}. ${rocStep>=ROC_THRESHOLDS.length-1
-        ? `That's the full curve -- bowed up and to the left of the diagonal means this model genuinely
-           ranks fraud cases higher than legitimate ones, not just guessing.`
-        : `Keep clicking to sweep the threshold further down.`}
+      At threshold <strong>${cur.t.toFixed(2)}</strong>: caught fraud = ${cur.cm.tp} of ${N_POS}, falsely
+      flagged legitimate transactions = ${cur.cm.fp} of ${N_NEG}.<br><br>
+      TPR = ${cur.cm.tp}/${N_POS} = ${fmt3(cur.tpr)} &nbsp;&middot;&nbsp;
+      FPR = ${cur.cm.fp}/${N_NEG} = ${fmt3(cur.fpr)}<br><br>
+      Point plotted: (FPR, TPR) = (${fmt3(cur.fpr)}, ${fmt3(cur.tpr)}). Each threshold gives us one point --
+      trying many thresholds creates the ROC curve.
+      ${isLast ? '<br><br>In Lecture 9, we’ll learn how AUC summarizes performance across all these thresholds in a single number.' : ''}
     </div>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
@@ -414,25 +535,19 @@ function renderROC() {
   document.getElementById('rocReset').onclick = () => { rocStep = 0; renderROC(); };
 }
 
-/* ---------- Stage 4: Wrap-Up ---------- */
+/* ---------- Stage 5: Recap ---------- */
 function renderSummary() {
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
     <h2>Recap</h2>
     <ul class="recap-list">
-      <li><strong>Accuracy can lie</strong> on imbalanced data -- a model that never looks at the data can
-      match a model that's genuinely learning something, if the majority class is common enough.</li>
-      <li><strong>The confusion matrix</strong> (TP/FP/FN/TN) is what accuracy hides: which kind of
-      mistake a model is making, not just how many.</li>
-      <li><strong>Precision and recall</strong> trade off as the threshold moves -- lower the bar to catch
-      more real positives (recall up), and you'll usually let in more false alarms (precision down).</li>
-      <li><strong>ROC/AUC</strong> measures ranking quality across every threshold at once, so it can
-      reveal real signal even when a single threshold's accuracy looks unimpressive.</li>
+      <li>High accuracy does not always mean a useful classifier.</li>
+      <li>Different mistakes matter differently -- missed positives and false alarms are not the same.</li>
+      <li>Changing the threshold changes which cases the model flags, without retraining the model.</li>
     </ul>
     <div class="callout">
-      <strong>Now open <code>lect09_evaluation_metrics.ipynb</code></strong> — Part 1 builds this exact
-      confusion matrix in code, Parts 2-4 compute precision/recall/F1 and the ROC curve properly, and
-      Part 5 runs the whole toolkit on real, genuinely imbalanced NYC 311 data.
+      <strong>Next:</strong> In Lecture 9, we'll calculate precision, recall, F1, and ROC/AUC in Python --
+      open <code>lect09_evaluation_metrics.ipynb</code> to get started.
     </div>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
@@ -441,9 +556,10 @@ function renderSummary() {
 /* ---------- navigation shell ---------- */
 const STAGES = [
   {label: 'Warm-Up · The Lazy Classifier', render: renderLazy},
-  {label: 'Part 1 · Meet the Confusion Matrix', render: renderConfusionMatrix},
-  {label: 'Part 2 · Precision vs. Recall', render: renderTugOfWar},
-  {label: 'Part 3-4 · Build the ROC Curve', render: renderROC},
+  {label: 'Practice · TP, TN, FP, FN', render: renderTPFPFN},
+  {label: 'Meet the Confusion Matrix', render: renderConfusionMatrix},
+  {label: 'Move the Threshold', render: renderTugOfWar},
+  {label: 'Build the ROC Curve', render: renderROC},
   {label: 'Recap', render: renderSummary},
 ];
 let current = 0;
