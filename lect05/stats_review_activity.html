@@ -354,7 +354,7 @@ function renderRound2() {
       </div>
       <div class="feedback" id="r2feedback"></div>
     </div>
-    <div class="callout"><strong>Why it matters later:</strong> a bigger standard deviation means squared-error loss (the thing linear regression minimizes in Lecture 7) gets dominated by a few extreme points. The IQR-based fence is a more robust way to flag them.</div>
+    <div class="callout"><strong>Why it matters later:</strong> Extreme values can have a big effect on linear regression because large errors are squared. IQR is less affected by extreme values, so it gives us a useful way to flag potential outliers.</div>
   `;
   const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
 
