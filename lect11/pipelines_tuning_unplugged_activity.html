@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Lecture 11 Unplugged Activity: One Split Isn't Enough</title>
+<style>
+  :root {
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #fafaf8;
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    --correct-bg: #e6f6ec; --correct-border: #2f9e56; --correct-text: #1e6b3a;
+    --incorrect-bg: #fdecec; --incorrect-border: #d64545; --incorrect-text: #a3302f;
+    --tricky-bg: #fff6e0; --tricky-border: #d69a1f; --tricky-text: #8a6100;
+    --accent: #2b6cb0;
+    --target-color: #d69a1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 28px; text-align: center; }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 4px 0; }
+
+  #progressWrap { max-width: 700px; margin: 0 auto 28px; }
+  #progressTrack { display: flex; gap: 6px; margin-bottom: 8px; }
+  .progress-seg { flex: 1; height: 8px; border-radius: 4px; background: #e2e0d8; cursor: pointer; }
+  .progress-seg.done { background: #2f9e56; }
+  .progress-seg.active { background: #f0b93d; }
+  #stageLabel { text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+  #app { max-width: 780px; margin: 0 auto 40px; }
+
+  .panel {
+    background: #fff; border-radius: 16px; box-shadow: var(--card-shadow);
+    padding: 28px 26px 24px; margin-bottom: 20px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; }
+  .panel .lede { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-nav { background: var(--accent); color: #fff; }
+  .btn-nav.back { background: #e2e0d8; color: var(--ink); }
+  .btn-pick { background: #fff; border: 2px solid #cfcdc3; color: var(--ink); }
+  .btn-pick.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-pick.on { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+
+  .quiz { background: #f5f4ef; border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .quiz .q { font-weight: 700; margin-bottom: 10px; }
+  .quiz .options { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .quiz .opt {
+    background: #fff; border: 2px solid #e2e0d8; border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  }
+  .quiz .opt.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+  .quiz .opt.incorrect { background: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+  .quiz .feedback { margin-top: 10px; font-size: 14px; line-height: 1.5; min-height: 20px; }
+  .quiz .feedback.right { color: var(--correct-text); }
+  .quiz .feedback.wrong { color: var(--incorrect-text); }
+
+  .callout {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: #eef4fb; border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.55;
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warm { background: #fff8e8; border-left-color: var(--target-color); }
+  .callout.warm strong { color: var(--tricky-text); }
+
+  .navrow { display: flex; justify-content: space-between; max-width: 780px; margin: 0 auto; }
+  footer { max-width: 900px; margin: 40px auto 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+  .recap-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: var(--ink); }
+  .recap-list li { margin-bottom: 10px; }
+  code { background: #f0efe9; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+
+  .slider-row { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 18px; }
+  .slider-row input[type="range"] { width: 100%; max-width: 500px; }
+
+  .dot-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; max-width: 620px; margin-left: auto; margin-right: auto; }
+  .dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); position: relative; }
+  .dot.fold-A { background: #2B6CB0; }
+  .dot.fold-B { background: #2f9e56; }
+  .dot.fold-C { background: #d69a1f; }
+  .dot.fold-D { background: #a3302f; }
+  .dot.dimmed { opacity: 0.25; }
+  .dot.ringed { box-shadow: 0 0 0 3px #1f2430, 0 1px 2px rgba(0,0,0,0.2); }
+  .dot-legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .dot-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  .metric-row { display: flex; justify-content: center; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+  .metric-box { border-radius: 10px; padding: 10px 18px; text-align: center; min-width: 100px; font-weight: 700; background: #f5f4ef; }
+  .metric-box .n { display: block; font-size: 22px; color: var(--accent); }
+
+  .fold-table { margin-top: 16px; }
+  .fold-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .fold-table th, .fold-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e0d8; }
+  .fold-table th:first-child, .fold-table td:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+  .fold-table thead th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .fold-table tbody td { font-weight: 700; }
+  .fold-table tr.pending td { color: #cfcdc3; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+  .bar-label { width: 80px; font-size: 13px; font-weight: 700; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 22px; background: #f0efe9; border-radius: 6px; position: relative; overflow: hidden; }
+  .bar-fill { position: absolute; top: 0; height: 100%; border-radius: 6px; transition: width 0.15s, left 0.15s; }
+  .bar-fill.signal { background: #2B6CB0; }
+  .bar-fill.noise { background: #9AA5B1; }
+  .bar-fill.zeroed { background: #d64545; }
+  .bar-value { width: 56px; font-size: 13px; font-weight: 700; text-align: left; flex-shrink: 0; }
+  .bar-mid-axis { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #cfcdc3; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lecture 11 Unplugged Activity — One Split Isn't Enough</h1>
+  <p>No coding for this part. You'll split a small dataset by hand several different ways to see how much
+  a single score can wobble, walk through k-fold cross-validation one fold at a time, and turn a
+  regularization "dial" to watch what happens to a model's coefficients.</p>
+</header>
+
+<div id="progressWrap">
+  <div id="progressTrack"></div>
+  <div id="stageLabel"></div>
+</div>
+
+<div id="app"></div>
+
+<div class="navrow">
+  <button class="btn-nav back" id="backBtn">&larr; Back</button>
+  <button class="btn-nav" id="nextBtn">Next &rarr;</button>
+</div>
+
+<footer>
+  CS383 — Data Science and Machine Learning · Unplugged warm-up for Lecture 11 (Cross-Validation, Pipelines, Tuning, Regularization)
+</footer>
+
+<script>
+/* ---------- shared data: 12 points, 4 folds of 3, one fixed model ---------- */
+/* Illustrative numbers, hand-picked to teach the mechanics cleanly -- same spirit as the fixed
+   TRUE_FRAUD/RISK_SCORE arrays in the Lecture 9 activity. */
+const FOLD_NAMES = ["A", "B", "C", "D"];
+const FOLD_R2 = { A: 0.82, B: 0.61, C: -0.18, D: 0.74 };
+const FOLD_COLOR = { A: "#2B6CB0", B: "#2f9e56", C: "#d69a1f", D: "#a3302f" };
+const POINT_FOLDS = ["A", "B", "C", "D", "A", "B", "C", "D", "A", "B", "C", "D"]; // 12 points, 3 per fold
+
+function mean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+function std(arr) {
+  const m = mean(arr);
+  return Math.sqrt(mean(arr.map(v => (v - m) ** 2)));
+}
+function fmt3(v) { return v.toFixed(3); }
+
+/* ---------- Stage 0: One Split, Different Answers ---------- */
+let chosenFolds = new Set();
+function renderOneSplit() {
+  const p = document.createElement("div"); p.className = "panel";
+  p.innerHTML = `
+    <h2>Warm-Up &middot; One Split, Different Answers</h2>
+    <p class="lede">Twelve data points, one fixed model (already fit -- don't worry about how). Pick
+    which 3 points you'll pretend are your "test set" this time, and see what R² that split alone
+    would report.</p>
+    <div class="dot-grid" id="splitGrid"></div>
+    <div class="dot-legend">
+      <span><i style="background:#2B6CB0"></i> Fold A</span>
+      <span><i style="background:#2f9e56"></i> Fold B</span>
+      <span><i style="background:#d69a1f"></i> Fold C</span>
+      <span><i style="background:#a3302f"></i> Fold D</span>
+    </div>
+    <div class="controls" id="foldButtons"></div>
+    <div class="metric-row" id="splitResult"></div>
+    <div class="quiz" id="splitQuiz" style="${chosenFolds.size >= 2 ? '' : 'display:none;'}">
+      <div class="q">Which of these fold's scores would you trust as "the" truth about this model?</div>
+      <div class="options">
+        <div class="opt" data-v="highest">Whichever one is highest</div>
+        <div class="opt" data-v="none">None alone -- I'd want to see all of them</div>
+      </div>
+      <div class="feedback" id="splitFeedback"></div>
+    </div>
+  `;
+  const app = document.getElementById("app"); app.innerHTML = ""; app.appendChild(p);
+
+  const grid = document.getElementById("splitGrid");
+  POINT_FOLDS.forEach(f => {
+    const d = document.createElement("div");
+    d.className = "dot fold-" + f + (chosenFolds.size && !chosenFolds.has(f) ? " dimmed" : "");
+    grid.appendChild(d);
+  });
+
+  const btnWrap = document.getElementById("foldButtons");
+  FOLD_NAMES.forEach(f => {
+    const b = document.createElement("button");
+    b.className = "btn-pick" + (chosenFolds.has(f) ? " chosen" : "");
+    b.textContent = "Test on Fold " + f;
+    b.onclick = () => { chosenFolds.add(f); renderOneSplit(); };
+    btnWrap.appendChild(b);
+  });
+
+  const result = document.getElementById("splitResult");
+  if (chosenFolds.size === 0) {
+    result.innerHTML = `<div class="metric-box">R²<span class="n">?</span></div>`;
+  } else {
+    result.innerHTML = Array.from(chosenFolds).sort().map(f =>
+      `<div class="metric-box">Fold ${f}<span class="n" style="color:${FOLD_COLOR[f]}">${fmt3(FOLD_R2[f])}</span></div>`
+    ).join("");
+  }
+
+  if (chosenFolds.size >= 2) {
+    document.querySelectorAll("#splitQuiz .opt").forEach(opt => {
+      opt.onclick = () => {
+        document.querySelectorAll("#splitQuiz .opt").forEach(o => o.classList.remove("correct", "incorrect"));
+        const fb = document.getElementById("splitFeedback");
+        if (opt.dataset.v === "none") {
+          opt.classList.add("correct");
+          fb.className = "feedback right";
+          fb.textContent = "Right -- notice the score swings a lot (even going negative for one fold) purely based on which 3 points you happened to pick, even though it's the exact same model every time. Trusting any single one of these would be trusting luck.";
+        } else {
+          opt.classList.add("incorrect");
+          document.querySelector('#splitQuiz .opt[data-v="none"]').classList.add("correct");
+          fb.className = "feedback wrong";
+          fb.textContent = "The highest score (Fold A, 0.82) looks the best, but it's only the best because that's the subset that happened to be easiest -- not because the model is actually that good. Same model, same data, wildly different-looking result.";
+        }
+      };
+    });
+  }
+}
+
+/* ---------- Stage 1: K-Fold Cross-Validation, One Fold at a Time ---------- */
+let cvStep = 0; // 0..4, how many folds have been revealed
+function renderCV() {
+  const p = document.createElement("div"); p.className = "panel";
+  const revealed = FOLD_NAMES.slice(0, cvStep);
+  const scores = revealed.map(f => FOLD_R2[f]);
+  p.innerHTML = `
+    <h2>Build the Cross-Validated Average, One Fold at a Time</h2>
+    <p class="lede">Same 12 points, same fixed model. Instead of picking just one fold to trust, k-fold
+    cross-validation tests <em>every</em> fold in turn and averages the results.</p>
+    <div class="dot-grid" id="cvGrid"></div>
+    <div class="controls">
+      <button class="btn-nav" id="cvNext" ${cvStep >= 4 ? "disabled" : ""}>Test next fold &rarr;</button>
+      <button class="btn-nav back" id="cvReset">Reset</button>
+    </div>
+    <div class="fold-table">
+      <table>
+        <thead><tr><th>Fold</th><th>R²</th></tr></thead>
+        <tbody id="cvTableBody"></tbody>
+      </table>
+    </div>
+    <div class="metric-row">
+      <div class="metric-box">Mean R²<span class="n">${scores.length ? fmt3(mean(scores)) : "?"}</span></div>
+      <div class="metric-box">Std Dev<span class="n">${scores.length > 1 ? fmt3(std(scores)) : "?"}</span></div>
+    </div>
+    <div class="callout ${cvStep >= 4 ? "" : ""}">
+      ${cvStep < 4
+        ? "Keep clicking to test the remaining folds."
+        : `Notice the mean (${fmt3(mean(scores))}) is actually <em>lower</em> than three of the four
+           individual folds. That's not a bug -- Fold A's 0.82 only looked that good because it was an
+           easy subset. Cross-validation forces every point to take a turn being tested, including the
+           hard ones, so the average is a less flattering but far more honest picture. The spread
+           (${fmt3(std(scores))}) is useful too: it tells you this estimate isn't very precise yet, which
+           a single split could never tell you at all.`}
+    </div>
+  `;
+  const app = document.getElementById("app"); app.innerHTML = ""; app.appendChild(p);
+
+  const grid = document.getElementById("cvGrid");
+  POINT_FOLDS.forEach(f => {
+    const d = document.createElement("div");
+    d.className = "dot fold-" + f + (revealed.includes(f) ? " ringed" : " dimmed");
+    grid.appendChild(d);
+  });
+
+  const tbody = document.getElementById("cvTableBody");
+  FOLD_NAMES.forEach((f, i) => {
+    const tr = document.createElement("tr");
+    if (i < cvStep) {
+      tr.innerHTML = `<td style="color:${FOLD_COLOR[f]}">Fold ${f}</td><td>${fmt3(FOLD_R2[f])}</td>`;
+    } else {
+      tr.className = "pending";
+      tr.innerHTML = `<td>Fold ${f}</td><td>--</td>`;
+    }
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("cvNext").onclick = () => { if (cvStep < 4) { cvStep++; renderCV(); } };
+  document.getElementById("cvReset").onclick = () => { cvStep = 0; renderCV(); };
+}
+
+/* ---------- Stage 2: The Regularization Dial ---------- */
+const COEFS = [
+  { name: "signal", value: 4.0, isSignal: true },
+  { name: "noise 1", value: 0.9, isSignal: false },
+  { name: "noise 2", value: -0.6, isSignal: false },
+  { name: "noise 3", value: 0.4, isSignal: false },
+  { name: "noise 4", value: -0.3, isSignal: false },
+];
+let alpha = 0;
+let regMode = "ridge"; // "ridge" | "lasso"
+
+function shrink(original, a, mode) {
+  if (mode === "ridge") {
+    return original / (1 + 0.3 * a);
+  }
+  // lasso -- soft thresholding: shrink toward zero, clamp at zero once the threshold exceeds |original|
+  const shrinkAmount = 0.35 * a;
+  const mag = Math.max(0, Math.abs(original) - shrinkAmount);
+  return Math.sign(original) * mag;
+}
+
+function renderReg() {
+  const p = document.createElement("div"); p.className = "panel";
+  const values = COEFS.map(c => shrink(c.value, alpha, regMode));
+  const maxAbs = 4.5;
+  const zeroedCount = regMode === "lasso" ? values.filter((v, i) => !COEFS[i].isSignal && Math.abs(v) < 0.005).length : 0;
+
+  p.innerHTML = `
+    <h2>The Regularization Dial</h2>
+    <p class="lede">Five coefficients from a linear model: one real <strong>signal</strong>, and four
+    <strong>noise</strong> features with no real relationship to the target at all. Turn up
+    <code>alpha</code> and watch what happens.</p>
+    <div class="controls" id="modeButtons"></div>
+    <div id="bars"></div>
+    <div class="slider-row">
+      <input type="range" id="alphaSlider" min="0" max="10" step="0.1" value="${alpha}">
+      <div>alpha = <strong>${alpha.toFixed(1)}</strong></div>
+    </div>
+    <div class="callout ${regMode === "lasso" && zeroedCount > 0 ? "warm" : ""}">
+      ${regMode === "ridge"
+        ? "Ridge shrinks every coefficient toward zero, including the signal's -- but proportionally, so the signal (which started far larger) stays far larger for the whole range. It rarely reaches exactly zero."
+        : (zeroedCount > 0
+            ? `<strong>${zeroedCount} of 4</strong> noise coefficients are now exactly zero -- Lasso has decided those features contribute nothing and dropped them completely, while the signal coefficient survives (shrunk, but nonzero).`
+            : "Lasso shrinks every coefficient toward zero too, but by a fixed amount rather than a fixed proportion -- so small coefficients hit exactly zero before large ones do. Keep turning the dial up.")}
+    </div>
+  `;
+  const app = document.getElementById("app"); app.innerHTML = ""; app.appendChild(p);
+
+  const modeWrap = document.getElementById("modeButtons");
+  ["ridge", "lasso"].forEach(m => {
+    const b = document.createElement("button");
+    b.className = "btn-pick" + (regMode === m ? " chosen" : "");
+    b.textContent = m === "ridge" ? "Ridge" : "Lasso";
+    b.onclick = () => { regMode = m; renderReg(); };
+    modeWrap.appendChild(b);
+  });
+
+  const bars = document.getElementById("bars");
+  COEFS.forEach((c, i) => {
+    const v = values[i];
+    const pct = Math.min(100, (Math.abs(v) / maxAbs) * 100);
+    const isZeroed = !c.isSignal && Math.abs(v) < 0.005 && regMode === "lasso";
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    row.innerHTML = `
+      <div class="bar-label">${c.name}</div>
+      <div class="bar-track">
+        <div class="bar-mid-axis"></div>
+        <div class="bar-fill ${isZeroed ? "zeroed" : (c.isSignal ? "signal" : "noise")}"
+             style="width:${pct / 2}%; ${v >= 0 ? "left:50%;" : `left:${50 - pct / 2}%;`}"></div>
+      </div>
+      <div class="bar-value">${v.toFixed(2)}</div>
+    `;
+    bars.appendChild(row);
+  });
+
+  document.getElementById("alphaSlider").oninput = (e) => { alpha = parseFloat(e.target.value); renderReg(); };
+}
+
+/* ---------- Stage 3: Recap ---------- */
+function renderSummary() {
+  const p = document.createElement("div"); p.className = "panel";
+  p.innerHTML = `
+    <h2>Recap</h2>
+    <ul class="recap-list">
+      <li>One split's score is one data point, not the truth -- cross-validation averages over many
+      splits for a more honest estimate.</li>
+      <li>Preprocessing has to be redone fresh on each fold's training portion, or it leaks -- that's
+      exactly what a <code>Pipeline</code> automates for you.</li>
+      <li>Regularization (Ridge/Lasso) shrinks a model's coefficients to fight overfitting;
+      <code>alpha</code> controls how much, and Lasso can zero features out entirely while Ridge just
+      shrinks them.</li>
+    </ul>
+    <div class="callout">
+      <strong>Next:</strong> open <code>lect11_pipelines_tuning.ipynb</code> to do all of this in code --
+      <code>cross_val_score</code>, <code>Pipeline</code>, <code>GridSearchCV</code>, and Ridge/Lasso --
+      on real NYC 311 data.
+    </div>
+  `;
+  const app = document.getElementById("app"); app.innerHTML = ""; app.appendChild(p);
+}
+
+/* ---------- navigation shell ---------- */
+const STAGES = [
+  { label: "Warm-Up · One Split, Different Answers", render: renderOneSplit },
+  { label: "K-Fold Cross-Validation", render: renderCV },
+  { label: "The Regularization Dial", render: renderReg },
+  { label: "Recap", render: renderSummary },
+];
+let current = 0;
+
+function renderProgress() {
+  const track = document.getElementById("progressTrack");
+  track.innerHTML = "";
+  STAGES.forEach((st, i) => {
+    const seg = document.createElement("div");
+    seg.className = "progress-seg" + (i < current ? " done" : (i === current ? " active" : ""));
+    seg.onclick = () => { current = i; render(); };
+    track.appendChild(seg);
+  });
+  document.getElementById("stageLabel").textContent = STAGES[current].label;
+}
+
+function render() {
+  renderProgress();
+  STAGES[current].render();
+  document.getElementById("backBtn").disabled = current === 0;
+  document.getElementById("nextBtn").textContent = current === STAGES.length - 1 ? "Restart" : "Next →";
+  window.scrollTo(0, 0);
+}
+
+document.getElementById("backBtn").onclick = () => { if (current > 0) { current--; render(); } };
+document.getElementById("nextBtn").onclick = () => {
+  if (current < STAGES.length - 1) { current++; render(); } else { current = 0; render(); }
+};
+
+render();
+</script>
+</body>
+</html>
