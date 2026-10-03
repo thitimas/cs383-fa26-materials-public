@@ -257,6 +257,84 @@ function renderScatterPlot(container, cfgPlot) {
   container.appendChild(s);
 }
 
+/* TRUE-SCALE scatter for the RAW round. Both axes use the SAME number of pixels
+   per unit, because raw Euclidean distance treats a 1-unit change in either
+   feature identically. The feature with the larger range goes on Y, so the
+   points collapse into a near-vertical strip: the visual proof that the big-number
+   feature decides "closeness". Labels are pulled out to the sides and spread
+   apart with thin leader lines so close points stay readable. */
+function renderRawScatter(container, cfgLines) {
+  container.innerHTML = '';
+  const { target, targetName, roster, winnerName, f1, f2 } = cfgLines;
+  const rng = f => { const v=[target[f.key], ...roster.map(p=>p[f.key])]; return Math.max(...v)-Math.min(...v); };
+  const [fx, fy] = rng(f1) >= rng(f2) ? [f2, f1] : [f1, f2];
+  const pts = roster.map(p => ({ name: p.name, x: p[fx.key], y: p[fy.key], isWinner: p.name === winnerName }));
+  const tp = { name: targetName, x: target[fx.key], y: target[fy.key] };
+  const all = [tp, ...pts];
+  const yMin = Math.min(...all.map(a=>a.y)), yMax = Math.max(...all.map(a=>a.y));
+  const xMin = Math.min(...all.map(a=>a.x)), xMax = Math.max(...all.map(a=>a.x));
+  const width = 640, height = 400, padT = 24, padB = 46, padL = 70;
+  const plotH = height - padT - padB;
+  const yPad = (yMax - yMin) * 0.06 || 1;
+  const y0 = yMin - yPad, y1 = yMax + yPad;
+  const k = plotH / (y1 - y0);               // pixels per unit, SAME for x and y
+  const cxMid = padL + (width - padL) / 2;
+  const sx = x => cxMid + (x - (xMin + xMax)/2) * k;
+  const sy = y => padT + plotH - (y - y0) * k;
+
+  const s = svg('svg', {width, height, viewBox: `0 0 ${width} ${height}`});
+  s.appendChild(svg('line', {x1:padL, y1:padT, x2:padL, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  s.appendChild(svg('line', {x1:padL, y1:padT+plotH, x2:width-20, y2:padT+plotH, stroke:'#cfcdc3', 'stroke-width':2}));
+  const yl = svg('text', {x:16, y: padT+plotH/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 16 ${padT+plotH/2})`});
+  yl.textContent = fy.label; s.appendChild(yl);
+  const xl = svg('text', {x: padL+(width-padL-20)/2, y: height-10, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'});
+  xl.textContent = `${fx.label} (same scale as the vertical axis)`;
+  s.appendChild(xl);
+
+  // y-axis ticks
+  const rough = (y1 - y0) / 4, mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = [1,2,5,10].map(m => m*mag).find(st => st >= rough);
+  for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step) {
+    if (v < 0 && yMin >= 0) continue;
+    const py = sy(v);
+    s.appendChild(svg('line', {x1:padL-4, y1:py, x2:padL, y2:py, stroke:'#cfcdc3', 'stroke-width':2}));
+    const t = svg('text', {x:padL-8, y:py+4, 'text-anchor':'end', 'font-size':11, fill:'#8a8f99'});
+    t.textContent = Math.round(v).toLocaleString(); s.appendChild(t);
+  }
+
+  const winner = pts.find(p => p.isWinner);
+  if (winner) s.appendChild(svg('line', {x1:sx(tp.x), y1:sy(tp.y), x2:sx(winner.x), y2:sy(winner.y),
+    stroke:'#2b6cb0', 'stroke-width':2, 'stroke-dasharray':'5,4'}));
+
+  // spread labels apart (min 15px), alternating sides; target always on the left
+  function place(items, side) {
+    items.sort((a,b)=>a.py-b.py);
+    let last = -1e9;
+    items.forEach(it => { it.ly = Math.max(it.py, last + 15); last = it.ly; });
+    const over = last - (padT + plotH);
+    if (over > 0) items.forEach(it => it.ly -= over);
+    for (let i = items.length-2; i >= 0; i--) if (items[i].ly > items[i+1].ly - 15) items[i].ly = items[i+1].ly - 15;
+    items.forEach(it => {
+      const lx = side === 'R' ? cxMid + 60 : cxMid - 60;
+      s.appendChild(svg('line', {x1:it.px, y1:it.py, x2: side==='R'? lx-4 : lx+4, y2:it.ly-4, stroke:'#d9d6cc', 'stroke-width':1}));
+      const t = svg('text', {x:lx, y:it.ly, 'text-anchor': side==='R'?'start':'end', 'font-size':12,
+        'font-weight': it.bold?700:600, fill: it.color});
+      t.textContent = it.text; s.appendChild(t);
+    });
+  }
+  const right = [], left = [];
+  const byY = [...pts].sort((a,b)=>a.y-b.y);
+  byY.forEach((p,i) => (i%2 ? left : right).push({px:sx(p.x), py:sy(p.y), text:p.name, bold:p.isWinner, color:p.isWinner?'#1f2430':'#5b6472'}));
+  left.push({px:sx(tp.x), py:sy(tp.y), text:`${tp.name} (target)`, bold:true, color:'#8a6100'});
+  place(right,'R'); place(left,'L');
+
+  // winner drawn larger and first, so it stays visible even if the target sits on top of it
+  [...pts].sort((a,b)=>b.isWinner-a.isWinner).forEach(p => s.appendChild(svg('circle', {cx:sx(p.x), cy:sy(p.y), r:p.isWinner?12:5.5,
+    fill:p.isWinner?'#2b6cb0':'#a9c2dd', stroke:p.isWinner?'#1f2430':'none', 'stroke-width':1.5})));
+  s.appendChild(svg('circle', {cx:sx(tp.x), cy:sy(tp.y), r:6, fill:'#d69a1f', stroke:'#8a6100', 'stroke-width':1.5}));
+  container.appendChild(s);
+}
+
 /* Two independent 1D number lines, one per feature, each auto-scaled to its own
    true range. Used for the RAW round: a 2D scatter there would auto-scale both
    axes to fill equal pixel space, which erases the very magnitude mismatch
@@ -490,10 +568,11 @@ function renderRound2() {
 
   p.innerHTML = `
     <h2>2 &middot; Measure It With Raw Numbers</h2>
-    <p class="lede">Age and income, each on its own number line, using the raw values exactly as
-    reported.</p>
+    <p class="lede">Age and income as raw values, plotted on the <strong>same scale</strong> &mdash;
+    one unit of age takes up exactly as much space as one dollar of income. Closer to the gold dot =
+    more similar.</p>
     <div id="rawChart"></div>
-    <p class="small-note">Gold = Jordan (target). Dark blue = closest match by raw distance.</p>
+    <p class="small-note">Gold = Jordan (target). Dark blue = closest match by raw distance. Notice how the dots line up vertically: age differences are too small to even see.</p>
     <div class="callout" id="rawWinnerCallout"></div>
     <div class="quiz" id="r2quiz">
       <div class="q">Does it feel right that ${winner.name} (age ${winner.age}) is the "most similar" person to Jordan (age ${JORDAN.age})?</div>
@@ -505,7 +584,7 @@ function renderRound2() {
     </div>
   `;
   const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
-  renderNumberLines(document.getElementById('rawChart'), {
+  renderRawScatter(document.getElementById('rawChart'), {
     target: JORDAN,
     targetName: JORDAN.name,
     roster: raw,
@@ -737,7 +816,7 @@ function mkExample(cfg) {
       <h2>${cfg.exampleLabel} — Raw Numbers</h2>
       <p class="lede">${cfg.rawIntro}</p>
       <div id="rawChart"></div>
-      <p class="small-note">Gold = ${cfg.target.name} (target). Dark blue = closest match by raw distance.</p>
+      <p class="small-note">Gold = ${cfg.target.name} (target). Dark blue = closest match by raw distance. Both axes use the same scale, so the feature with bigger numbers dominates the picture.</p>
       <div class="callout" id="rawWinnerCallout"></div>
       <div class="quiz" id="rquiz">
         <div class="q">${cfg.feelsRightQuestion(winner)}</div>
@@ -749,7 +828,7 @@ function mkExample(cfg) {
       </div>
     `;
     const app = document.getElementById('app'); app.innerHTML=''; app.appendChild(p);
-    renderNumberLines(document.getElementById('rawChart'), {
+    renderRawScatter(document.getElementById('rawChart'), {
       target: cfg.target,
       targetName: cfg.target.name,
       roster: raw,
@@ -890,7 +969,7 @@ const example2 = mkExample({
   introMeet: `Six restaurants, each with two numbers: violation count and days since last inspection.
     <strong>${RESTAURANT_TARGET.name}</strong> is the target we're finding a match for.`,
   guessPrompt: `<strong>Gut check:</strong> which restaurant looks most similar to ${RESTAURANT_TARGET.name}?`,
-  rawIntro: `Same idea as Example 1 — each feature on its own number line, using the raw numbers as reported.`,
+  rawIntro: `Same idea as Example 1 — raw numbers plotted on the same scale, so closer to the gold dot = more similar.`,
   feelsRightQuestion: winner => `Does it feel right that ${winner.name} (${winner.violation_count} violation${winner.violation_count===1?'':'s'}) is ${RESTAURANT_TARGET.name}'s closest match, when ${RESTAURANT_TARGET.name} has ${RESTAURANT_TARGET.violation_count} violations?`,
   feelsRightNoLabel: 'No — that\'s a big difference in violation count',
   feelsRightCorrectFeedback: winner => `Right — it shouldn't feel right. ${winner.name} has only ${winner.violation_count} violation${winner.violation_count===1?'':'s'} versus ${RESTAURANT_TARGET.name}'s ${RESTAURANT_TARGET.violation_count}, a real difference in food-safety history. But days_since_last_inspection ranges into the hundreds while violation_count only ranges roughly 0–15, so raw distance is driven almost entirely by days_since_last_inspection — ${winner.name} just happened to land close on that one big-scale number.`,
@@ -922,7 +1001,7 @@ const example3 = mkExample({
   introMeet: `Six students, each with two numbers: weekly study hours and previous exam score.
     <strong>${STUDENT_TARGET.name}</strong> is the target we're finding a study partner for.`,
   guessPrompt: `<strong>Gut check:</strong> which student looks most similar to ${STUDENT_TARGET.name}?`,
-  rawIntro: `Same idea again — each feature on its own number line, using the raw numbers as reported.`,
+  rawIntro: `Same idea again — raw numbers plotted on the same scale, so closer to the gold dot = more similar.`,
   feelsRightQuestion: winner => `Does it feel right that ${winner.name} (${winner.study_hours} study hours/week) is ${STUDENT_TARGET.name}'s closest match, when ${STUDENT_TARGET.name} studies ${STUDENT_TARGET.study_hours} hours/week?`,
   feelsRightNoLabel: 'No — that\'s a big gap in study hours',
   feelsRightCorrectFeedback: winner => `Right — it shouldn't feel right. ${winner.name} studies ${winner.study_hours} hours a week versus ${STUDENT_TARGET.name}'s ${STUDENT_TARGET.study_hours}, a real difference in study habits. But previous_exam_score runs roughly 0–100 while study_hours only runs roughly 0–20, so raw distance is dominated by whichever score happens to land numerically close to ${STUDENT_TARGET.name}'s — in this case, ${winner.name}'s.`,
