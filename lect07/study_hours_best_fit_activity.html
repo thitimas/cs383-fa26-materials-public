@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Study Hours vs Exam Score - Debrief</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:Arial,Helvetica,sans-serif;max-width:960px;margin:20px auto;padding:0 16px;color:#222}
+h1{font-size:24px;margin-bottom:4px}p.l{color:#555;margin-top:0}
+.row{display:flex;gap:20px;flex-wrap:wrap}
+.panel{flex:1;min-width:280px}
+svg{width:100%;background:#fff;border:1px solid #ddd;border-radius:8px}
+button{padding:8px 12px;margin:3px 4px 3px 0;border:1px solid #2B6CB0;background:#fff;color:#2B6CB0;border-radius:6px;cursor:pointer;font-size:14px}
+button.on{background:#2B6CB0;color:#fff}
+.sl{margin:10px 0}.sl label{display:block;font-size:14px}.sl input{width:100%}
+.box{background:#f4f7fb;border-radius:8px;padding:10px 14px;margin:8px 0;font-size:15px}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-bottom:1px solid #ddd;padding:5px 8px;text-align:right}th{background:#f0f0f0}
+.big{font-size:22px;font-weight:700}
+.hide{display:none}
+</style></head><body>
+<h1>Study hours vs exam score - debrief</h1>
+<p class="l">Our class's 30 dots. Use the controls to play with a line, then compare it to the best fit.</p>
+<div class="row"><div class="panel" style="flex:2;min-width:380px">
+<svg id="s" viewBox="0 0 560 420"></svg>
+<div>
+<button id="bErr">Show errors</button>
+<button id="bBest">Show best-fit line</button>
+<button id="bTest">Reveal held-out points</button>
+<button id="bOut">Add outlier (10 h, 45)</button>
+</div></div>
+<div class="panel"><h3 style="margin-top:0">Your line</h3>
+<div class="sl"><label>Intercept (score at 0 hours): <b id="av"></b></label><input id="ai" type="range" min="20" max="80" step="0.5" value="40"></div>
+<div class="sl"><label>Slope (points per hour): <b id="bv"></b></label><input id="bi" type="range" min="0" max="10" step="0.05" value="3"></div>
+<div class="box">Your total squared error (RSS):<div class="big" id="rss"></div><span id="cmp"></span></div>
+<div class="box hide" id="bestBox">Best-fit line:<div class="big" id="bf"></div>RSS = <b id="brss"></b> - no other straight line scores lower.</div>
+</div></div>
+<div id="testTbl" class="hide"><h3>Predicting students we haven't seen</h3>
+<table><thead><tr><th>Hours</th><th>True score</th><th>Your line</th><th>Your error</th><th>Best-fit</th><th>Best-fit error</th></tr></thead><tbody id="tb"></tbody></table>
+<p class="l">Errors on unseen points are usually a bit larger than on the points the line was fit to. That's the idea behind a train/test split.</p></div>
+<script>
+const D={"train": [[1.0, 45], [8.0, 94], [1.5, 58], [1.0, 45], [3.0, 54], [5.5, 75], [7.5, 91], [7.5, 88], [1.0, 50], [7.0, 89], [9.5, 92], [7.5, 88], [0.5, 48], [6.0, 80], [1.5, 56], [5.0, 77], [8.0, 84], [4.5, 68], [5.5, 67], [5.0, 76], [5.5, 68], [9.0, 91], [2.0, 67], [3.5, 64], [3.5, 67], [6.0, 79], [9.0, 86], [0.5, 45], [6.0, 78], [1.0, 51]], "test": [[2.5, 54], [4.0, 56], [6.5, 80], [8.5, 87]], "a": 45.439649219721026, "b": 5.336693826819503};let train=D.train.slice(),A=40,B=3,showErr=false,showBest=false,showTest=false;
+const s=document.getElementById('s'),W=560,H=420,L=50,R=15,T=15,Bt=45;
+const X=h=>L+h/10*(W-L-R),Y=v=>H-Bt-(v-30)/(100-30)*(H-Bt-T);
+function fit(pts){const n=pts.length,mx=pts.reduce((a,p)=>a+p[0],0)/n,my=pts.reduce((a,p)=>a+p[1],0)/n;
+let sxy=0,sxx=0;pts.forEach(p=>{sxy+=(p[0]-mx)*(p[1]-my);sxx+=(p[0]-mx)**2});const b=sxy/sxx;return[my-b*mx,b]}
+const rssOf=(a,b)=>train.reduce((t,p)=>t+(p[1]-(a+b*p[0]))**2,0);
+function ln(a,b,col,w,dash){return `<line x1="${X(0)}" y1="${Y(a)}" x2="${X(10)}" y2="${Y(a+10*b)}" stroke="${col}" stroke-width="${w}" ${dash?'stroke-dasharray="6 4"':''} clip-path="url(#c)"/>`}
+function draw(){let o=`<defs><clipPath id="c"><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-Bt-T}"/></clipPath></defs>`;
+for(let h=0;h<=10;h+=2)o+=`<line x1="${X(h)}" y1="${T}" x2="${X(h)}" y2="${H-Bt}" stroke="#eee"/><text x="${X(h)}" y="${H-Bt+16}" font-size="12" text-anchor="middle">${h}</text>`;
+for(let v=30;v<=100;v+=10)o+=`<line x1="${L}" y1="${Y(v)}" x2="${W-R}" y2="${Y(v)}" stroke="#eee"/><text x="${L-6}" y="${Y(v)+4}" font-size="12" text-anchor="end">${v}</text>`;
+o+=`<text x="${(L+W)/2}" y="${H-8}" font-size="13" text-anchor="middle">Hours studied</text><text transform="translate(13,${H/2}) rotate(-90)" font-size="13" text-anchor="middle">Exam score</text>`;
+if(showErr)train.forEach(p=>{o+=`<line x1="${X(p[0])}" y1="${Y(p[1])}" x2="${X(p[0])}" y2="${Y(A+B*p[0])}" stroke="#E53E3E" stroke-width="2" opacity=".6"/>`});
+if(showBest){const[a,b]=fit(train);o+=ln(a,b,"#2F855A",3,false)}
+o+=ln(A,B,"#DD6B20",3,true);
+train.forEach(p=>o+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="5.5" fill="#2B6CB0" stroke="#fff"/>`);
+if(showTest)D.test.forEach(p=>o+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="7" fill="#F6AD55" stroke="#333" stroke-width="1.5"/>`);
+s.innerHTML=o;
+document.getElementById('av').textContent=A.toFixed(1);document.getElementById('bv').textContent=B.toFixed(2);
+const r=rssOf(A,B);document.getElementById('rss').textContent=r.toFixed(0);
+const[a,b]=fit(train),br=rssOf(a,b);
+document.getElementById('cmp').textContent=r-br<1?'You matched the best fit!':`Best possible is ${br.toFixed(0)}; you're ${(r-br).toFixed(0)} above it.`;
+document.getElementById('bf').textContent=`score = ${a.toFixed(1)} + ${b.toFixed(2)} x hours`;document.getElementById('brss').textContent=br.toFixed(0);
+document.getElementById('bestBox').classList.toggle('hide',!showBest);
+document.getElementById('testTbl').classList.toggle('hide',!showTest);
+document.getElementById('tb').innerHTML=D.test.map(p=>{const y1=A+B*p[0],y2=a+b*p[0];return `<tr><td>${p[0]}</td><td>${p[1]}</td><td>${y1.toFixed(1)}</td><td>${(y1-p[1]).toFixed(1)}</td><td>${y2.toFixed(1)}</td><td>${(y2-p[1]).toFixed(1)}</td></tr>`}).join('')}
+function tog(id,f){document.getElementById(id).onclick=function(){f();this.classList.toggle('on');draw()}}
+tog('bErr',()=>showErr=!showErr);tog('bBest',()=>showBest=!showBest);tog('bTest',()=>showTest=!showTest);
+let out=false;document.getElementById('bOut').onclick=function(){out=!out;if(out)train.push([10,45]);else train.pop();this.classList.toggle('on',out);this.textContent=out?'Remove outlier':'Add outlier (10 h, 45)';draw()};
+document.getElementById('ai').oninput=e=>{A=+e.target.value;draw()};document.getElementById('bi').oninput=e=>{B=+e.target.value;draw()};
+draw();
+</script></body></html>
