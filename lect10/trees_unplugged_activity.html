@@ -137,9 +137,10 @@
 
 <header>
   <h1>Lecture 10 Unplugged Activity — Twenty Questions</h1>
-  <p>No coding yet. You'll build a decision tree by hand on real reinspection data, see why a tree that
-  asks too many questions memorizes instead of learning, and get an intuitive preview of why many trees
-  voting (or correcting each other) tends to beat trusting just one.</p>
+  <p>No coding yet. You'll pick a decision tree's first question, see how tree depth changes a model's boundary and its
+  accuracy on data it hasn't seen, and get an intuition for how forests (many trees voting) and gradient
+  boosting (trees added one at a time) work. The 40 restaurants are a small practice dataset, not a
+  real NYC sample.</p>
 </header>
 
 <div id="progressWrap">
@@ -159,7 +160,9 @@
 </footer>
 
 <script>
-/* ---------- data (verified against the actual Lecture 10 notebook, same toy set as Lecture 8) ---------- */
+/* ---------- data: the 40-restaurant practice set from the Lecture 10 notebook (same toy set as Lecture 8).
+   Every number below (Gini values, leaf counts, accuracies, grids, votes, boosting curves) was computed with
+   scikit-learn on this exact data; none are invented. ---------- */
 const VIOLATIONS = [2, 0, 9, 8, 2, 9, 2, 8, 5, 3, 5, 0, 5, 2, 5, 3, 2, 5, 2, 5,
                     7, 0, 5, 6, 0, 6, 6, 5, 8, 10, 4, 10, 9, 7, 0, 10, 4, 0, 8, 6];
 const DAYS_UNTIL = [258, 228, 273, 47, 323, 302, 322, 24, 256, 37, 24, 218, 24, 8, 341,
@@ -178,23 +181,33 @@ const CANDIDATES = [
 ];
 const BEST_IDX = 3; // days_until_reinspection <= 161 -- what the real tree in the notebook actually picks
 
-// Precomputed prediction grids (30x24, verified via DecisionTreeClassifier at each depth on this exact
-// data) -- '0' = predicts fail, '1' = predicts pass. Used to draw the same kind of colored-background
-// boundary the notebook's plot_decision_boundary() produces, without re-implementing a tree in JS.
+// Prediction grids (30 columns x 24 rows), computed with DecisionTreeClassifier(random_state=383) fit on all 40
+// points. Row 0 is the TOP of the chart (highest days_until_reinspection). '0' = predicts fail, '1' = predicts pass.
 const GRID_NX = 30, GRID_NY = 24;
 const GRID_X0 = -1, GRID_X1 = 11, GRID_Y0 = -14, GRID_Y1 = 397;
 const DEPTH_GRIDS = {
-  1: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-  2: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000",
-  3: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-  99: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111100000000000000000000111111111111111111111111111111111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  1: "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  2: "111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  3: "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  99: "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111111111111111111111111111111111100000000000000000000111111111111111111111111111111111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 };
 const DEPTH_INFO = {
-  1: { label: "max_depth = 1", acc: 0.750, leaves: 2 },
-  2: { label: "max_depth = 2", acc: 0.850, leaves: 4 },
-  3: { label: "max_depth = 3", acc: 0.925, leaves: 6 },
-  99: { label: "no limit (depth 7)", acc: 1.000, leaves: 12 },
+  1: { label: "max_depth = 1", acc: 0.750, leaves: 2, depth: 1 },
+  2: { label: "max_depth = 2", acc: 0.850, leaves: 3, depth: 2 },
+  3: { label: "max_depth = 3", acc: 0.925, leaves: 4, depth: 3 },
+  99: { label: "no depth limit", acc: 1.000, leaves: 8, depth: 7 },
 };
+
+/* ---------- train/test + boosting results (computed with scikit-learn on the 40-restaurant set) ---------- */
+const TT_SPLIT = {"ntr":28,"nte":12,"pass_tr":11,"pass_te":5};
+const TT_ROWS = [{"depth":1,"leaves":2,"actual_depth":1,"train":0.8571428571428571,"test":0.6666666666666666},{"depth":2,"leaves":4,"actual_depth":2,"train":0.9642857142857143,"test":0.75},{"depth":3,"leaves":5,"actual_depth":3,"train":0.9642857142857143,"test":0.75},{"depth":4,"leaves":6,"actual_depth":4,"train":1.0,"test":0.6666666666666666},{"depth":5,"leaves":6,"actual_depth":4,"train":1.0,"test":0.6666666666666666},{"depth":6,"leaves":6,"actual_depth":4,"train":1.0,"test":0.6666666666666666},{"depth":7,"leaves":6,"actual_depth":4,"train":1.0,"test":0.6666666666666666},{"depth":8,"leaves":6,"actual_depth":4,"train":1.0,"test":0.6666666666666666}];
+const TT_UNLIMITED = {"leaves":6,"depth":4,"train":1.0,"test":0.6666666666666666};
+const TT_REPEAT = [{"depth":1,"train":0.8035714285714286,"test":0.635},{"depth":2,"train":0.8828571428571429,"test":0.7433333333333334},{"depth":3,"train":0.9271428571428573,"test":0.7583333333333334},{"depth":4,"train":0.9592857142857144,"test":0.7566666666666667},{"depth":5,"train":0.9871428571428572,"test":0.7533333333333333},{"depth":6,"train":0.9942857142857143,"test":0.7516666666666666},{"depth":7,"train":0.9992857142857143,"test":0.7499999999999999},{"depth":8,"train":1.0,"test":0.7499999999999999},{"depth":99,"train":1.0,"test":0.7499999999999999}];
+const BOOST = [{"round":0,"train_loss":0.6700089798274271,"test_loss":0.6803736958097568,"train_acc":0.6071428571428571,"test_acc":0.5833333333333334},{"round":1,"train_loss":0.5155246588190278,"test_loss":0.6187643770275415,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":2,"train_loss":0.4166063601178669,"test_loss":0.589554089894999,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":3,"train_loss":0.34758218201808255,"test_loss":0.5779780977310043,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":4,"train_loss":0.302428352764447,"test_loss":0.5512571787424155,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":5,"train_loss":0.26184438254434517,"test_loss":0.5498139819591668,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":6,"train_loss":0.22436462398572923,"test_loss":0.5519911973091105,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":7,"train_loss":0.19575709525294707,"test_loss":0.5736285677706974,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":8,"train_loss":0.17687882789630785,"test_loss":0.5768832075342548,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":9,"train_loss":0.15329681511183876,"test_loss":0.5865189973566937,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":10,"train_loss":0.13536738412122445,"test_loss":0.5983229756262753,"train_acc":0.9642857142857143,"test_acc":0.75},{"round":11,"train_loss":0.12025849603806275,"test_loss":0.6288318002341066,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":12,"train_loss":0.11086242692837646,"test_loss":0.6318509286657067,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":13,"train_loss":0.1011268859036218,"test_loss":0.6407667000909003,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":14,"train_loss":0.08964555434040344,"test_loss":0.6551973319492547,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":15,"train_loss":0.08106223223204878,"test_loss":0.6865142250913046,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":16,"train_loss":0.07357370954332412,"test_loss":0.7021391863262324,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":17,"train_loss":0.06512709876689612,"test_loss":0.716369133211625,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":18,"train_loss":0.057355545207042904,"test_loss":0.7586921526202728,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":19,"train_loss":0.05231679703712958,"test_loss":0.7746026813632662,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":20,"train_loss":0.04742351150097697,"test_loss":0.8090580043594979,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":21,"train_loss":0.04226297844719762,"test_loss":0.8524445810717904,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":22,"train_loss":0.03878144845572879,"test_loss":0.8688782676683487,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":23,"train_loss":0.03544380755012926,"test_loss":0.9031764640559857,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":24,"train_loss":0.03195887863689105,"test_loss":0.947284135827235,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":25,"train_loss":0.029549778153158172,"test_loss":0.9640653982309934,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":26,"train_loss":0.027224562533219646,"test_loss":0.9977112194859444,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":27,"train_loss":0.024843918908032663,"test_loss":1.0423202865854984,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":28,"train_loss":0.02355703943526703,"test_loss":1.0685902739293858,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":29,"train_loss":0.021888168347055304,"test_loss":1.0747401096954334,"train_acc":1.0,"test_acc":0.6666666666666666},{"round":30,"train_loss":0.01925267754961738,"test_loss":1.0929178077524433,"train_acc":1.0,"test_acc":0.6666666666666666}];
+const BOOST_PTS = {"idx":[0,3,6,9,12,15,18,21],"x":[[5.0,104.0],[2.0,184.0],[5.0,229.0],[6.0,365.0],[2.0,258.0],[6.0,374.0],[0.0,167.0],[3.0,114.0]],"y":[0,1,0,1,1,1,1,0],"probs":[[0.39285714285714285,0.39285714285714285,0.39285714285714285,0.39285714285714285,0.39285714285714285,0.39285714285714285,0.39285714285714285,0.39285714285714285],[0.32840538116372414,0.5184348493493355,0.32840538116372414,0.5184348493493355,0.5184348493493355,0.5184348493493355,0.5184348493493355,0.32840538116372414],[0.2769055168817687,0.6129072694961828,0.2769055168817687,0.6129072694961828,0.6129072694961828,0.6129072694961828,0.6129072694961828,0.2769055168817687],[0.23546666535306418,0.6869423490437162,0.23546666535306418,0.6869423490437162,0.6869423490437162,0.6869423490437162,0.6869423490437162,0.23546666535306418],[0.19165473757339088,0.7459274063444858,0.23499514395713345,0.6863784075824272,0.7459274063444858,0.6863784075824272,0.7459274063444858,0.19165473757339088],[0.15620862955904116,0.7612662903675774,0.2501727597514588,0.7038852227636815,0.7612662903675774,0.7038852227636815,0.7612662903675774,0.15620862955904116],[0.13337694684229442,0.8057072829020528,0.21714143533595381,0.7595119033833391,0.8057072829020528,0.7595119033833391,0.8057072829020528,0.13337694684229442],[0.11525296803644383,0.8416536331827907,0.1901323153679624,0.72775417146573,0.8416536331827907,0.72775417146573,0.8416536331827907,0.11525296803644383],[0.09416947767019752,0.8489995937471059,0.19893591477247416,0.7387439304170165,0.8489995937471059,0.7387439304170165,0.8489995937471059,0.09416947767019752],[0.08093590200184828,0.8767867870887058,0.1738044806181138,0.7875432951611284,0.8767867870887058,0.7875432951611284,0.8767867870887058,0.08093590200184828],[0.07052805402974095,0.8993889215062507,0.15344822309316555,0.8269458141697495,0.8993889215062507,0.8269458141697495,0.8993889215062507,0.07052805402974095],[0.06153177155029035,0.9178001651626555,0.13541594087465017,0.8050317712678122,0.9178001651626555,0.8050317712678122,0.9178001651626555,0.06153177155029035],[0.05565272285081167,0.9093858225757658,0.12340590685062207,0.8411062871936761,0.9093858225757658,0.8411062871936761,0.9093858225757658,0.05565272285081167],[0.04552654598596115,0.912088999786676,0.12704848758672874,0.8455003031321972,0.912088999786676,0.8455003031321972,0.912088999786676,0.04552654598596115],[0.039886884045806426,0.9280831150788507,0.1125004774738955,0.8739431938323688,0.9280831150788507,0.8739431938323688,0.9280831150788507,0.039886884045806426],[0.03504871552082539,0.9411575337725292,0.0997697428878544,0.8583858541494154,0.9411575337725292,0.8583858541494154,0.9411575337725292,0.03504871552082539],[0.03119919939935077,0.950967903948842,0.08947080891274588,0.8844173376596695,0.950967903948842,0.8844173376596695,0.950967903948842,0.03119919939935077],[0.028233194257401874,0.9459384511957188,0.08143074205290528,0.9051970316201857,0.9459384511957188,0.9051970316201857,0.9459384511957188,0.028233194257401874],[0.02493699777407959,0.95474874845335,0.07238642274560175,0.8936729214945414,0.95474874845335,0.8936729214945414,0.95474874845335,0.02493699777407959],[0.022309044267262504,0.961788586343114,0.06509188192415485,0.9131418877628361,0.961788586343114,0.9131418877628361,0.961788586343114,0.022309044267262504],[0.020572191542892294,0.958625413812815,0.060229396839953576,0.929013885344428,0.958625413812815,0.929013885344428,0.958625413812815,0.020572191542892294],[0.018217917411762156,0.9648692354158359,0.05358506262750325,0.9203933792495309,0.9648692354158359,0.9203933792495309,0.9648692354158359,0.018217917411762156],[0.01634038672558391,0.9698023273092905,0.04824170938983756,0.9349296498304457,0.9698023273092905,0.9349296498304457,0.9698023273092905,0.01634038672558391],[0.015116445141475107,0.9673977169756164,0.044736942439611405,0.9467945924583467,0.9673977169756164,0.9467945924583467,0.9673977169756164,0.015116445141475107],[0.013411889693116675,0.9717881228905259,0.039827398042140603,0.9403384036634043,0.9717881228905259,0.9403384036634043,0.9717881228905259,0.013411889693116675],[0.012050473139730273,0.9752175900430613,0.035882113134636864,0.9512114471366795,0.9752175900430613,0.9512114471366795,0.9752175900430613,0.012050473139730273],[0.01119782071290646,0.9733584158162277,0.03340021917513771,0.9600937836050414,0.9733584158162277,0.9600937836050414,0.9733584158162277,0.01119782071290646],[0.009947484038550194,0.9764382425984744,0.029745363163357384,0.9552480335475111,0.9764382425984744,0.9552480335475111,0.9764382425984744,0.009947484038550194],[0.009330894067595498,0.9749050914088779,0.027936237998745755,0.9633924144833629,0.9749050914088779,0.9633924144833629,0.9749050914088779,0.009330894067595498],[0.007635311045965154,0.9758818180061224,0.029062981570837927,0.9648010512610227,0.9758818180061224,0.9648010512610227,0.9758818180061224,0.007635311045965154],[0.006753948665430588,0.9802559455994045,0.025772408645893485,0.9712012667274823,0.9802559455994045,0.9712012667274823,0.9802559455994045,0.006753948665430588]],"base":0.39285714285714285};
+// Real RandomForestClassifier(n_estimators=5, random_state=1) fit on all 40 restaurants; each tree's vote for a new
+// restaurant with 6 violations and 200 days until reinspection. 0 = fail, 1 = pass.
+const FOREST_VOTES_RAW = [0, 0, 1, 1, 0];
 
 function svg(tag, attrs) {
   const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -257,6 +270,31 @@ function drawDots(s, highlightFn) {
 }
 
 /* ---------- Stage 0: Which Question Splits Best? ---------- */
+function g2(p, n) { const q = p / n; return 1 - q*q - (1-q)*(1-q); }
+function giniMath(c) {
+  const rightPassN = c.rightPass, nL = c.leftN, nR = c.rightN, n = nL + nR;
+  const gL = g2(c.leftPass, nL), gR = g2(c.rightPass, nR);
+  const w = (nL/n)*gL + (nR/n)*gR;
+  const pL = c.leftPass/nL, pR = c.rightPass/nR;
+  return `
+    <div class="callout" style="margin-top:14px;">
+      <strong>The math, one step at a time.</strong> A group's <em>Gini impurity</em> is
+      <code>1 &minus; p(pass)&sup2; &minus; p(fail)&sup2;</code>: 0 means every restaurant in the group has the
+      same outcome, and 0.5 is the most mixed a two-class group can be.
+      <ul style="margin:8px 0 0; padding-left:20px;">
+        <li>Yes group (${nL} restaurants, ${c.leftPass} pass, ${nL-c.leftPass} fail): p(pass) = ${pL.toFixed(2)}, so
+        Gini = 1 &minus; ${(pL*pL).toFixed(3)} &minus; ${((1-pL)*(1-pL)).toFixed(3)} = <strong>${gL.toFixed(3)}</strong></li>
+        <li>No group (${nR} restaurants, ${c.rightPass} pass, ${nR-c.rightPass} fail): p(pass) = ${pR.toFixed(2)}, so
+        Gini = 1 &minus; ${(pR*pR).toFixed(3)} &minus; ${((1-pR)*(1-pR)).toFixed(3)} = <strong>${gR.toFixed(3)}</strong></li>
+        <li>Weight each group by its share of the 40 restaurants:
+        (${nL}/${n}) &times; ${gL.toFixed(3)} + (${nR}/${n}) &times; ${gR.toFixed(3)} = <strong>${w.toFixed(3)}</strong></li>
+      </ul>
+      <div style="margin-top:8px;">Before any split, all 40 restaurants together have Gini 0.480. A good question is one that
+      lowers that number, because it leaves groups with fewer mixed pass/fail labels. The tree tries many possible
+      questions and keeps the one with the lowest weighted Gini.</div>
+    </div>`;
+}
+
 let chosenCandidate = null;
 function renderSplitChoice() {
   const p = document.createElement('div'); p.className = 'panel';
@@ -301,6 +339,7 @@ function renderSplitChoice() {
       <div class="split-box"><div class="lbl">No group</div><div class="val">${c.rightPass}/${c.rightN} passed</div><div>(${rightPassRate}%)</div></div>
       <div class="split-box"><div class="lbl">Weighted Gini</div><div class="val">${c.gini.toFixed(3)}</div><div>(lower = purer)</div></div>
     </div>
+    ${giniMath(c)}
     <div class="callout ${isBest ? 'warm' : ''}">
       ${isBest
         ? `<strong>This is the one the real tree picks.</strong> "days_until_reinspection &le; 161" gives
@@ -320,9 +359,10 @@ function renderDepthExplorer() {
   p.innerHTML = `
     <h2>Part 1 &middot; How Deep Is Too Deep?</h2>
     <p class="lede">The colored background shows what a decision tree would predict everywhere on the
-    chart, not just at the 40 training points &mdash; the same kind of picture
-    <code>plot_decision_boundary()</code> draws in the notebook. Try each depth and watch the boundary
-    (and the training accuracy) change.</p>
+    chart, not just at the 40 points &mdash; the same kind of picture <code>plot_decision_boundary()</code>
+    draws in the notebook. Try each depth and watch the boundary and the number of leaves change.
+    <strong>Demonstration only:</strong> every tree on this page is fit on all 40 points, so the accuracy shown
+    is <em>training</em> accuracy. The next screen checks the same idea on data the tree hasn't seen.</p>
     <div id="depthChart"></div>
     <div class="stepper-row" id="depthButtons"></div>
     <div id="depthReadout"></div>
@@ -357,38 +397,114 @@ function renderDepthExplorer() {
 
   const info = DEPTH_INFO[currentDepth];
   const readout = document.getElementById('depthReadout');
-  const warn = currentDepth === 99;
+  const msgs = {
+    1: 'One question only (days until reinspection &le; 161), so the boundary is a single horizontal line.',
+    2: `Two levels of questions give <strong>3 leaves, not 4</strong>: <code>max_depth</code> is a ceiling on how
+        many questions in a row the tree may ask, not a leaf count. The left branch was already pure after the
+        first question, so it stopped early.`,
+    3: 'A third level of questions adds a leaf, and the boundary starts bending around individual restaurants.',
+    99: `With no limit the tree keeps splitting until every training point sits in a pure leaf: ${info.leaves} leaves and
+        ${info.depth} levels deep here. 100% <em>training</em> accuracy alone doesn't prove the model is bad &mdash; but a
+        tree this flexible <em>can</em> memorize quirks of these 40 points, so the real test is what happens on
+        restaurants it hasn't seen (next screen).`,
+  };
   readout.innerHTML = `
-    <div class="callout ${warn ? '' : 'warm'}" style="text-align:center; margin-top:18px;">
-      <strong>${info.leaves} leaves, ${(info.acc*100).toFixed(1)}% training accuracy.</strong>
-      ${warn
-        ? `Look closely at the boundary &mdash; it's carved little islands around individual points to
-           reach 100% training accuracy. That's not a sign of a great model; it's a tree that memorized
-           this exact set of 40 restaurants instead of learning the general pattern.`
-        : `Notice the boundary is still just a handful of rectangles &mdash; simple, but it's already
-           catching the big pattern (few violations + a long wait tends to pass).`}
+    <div class="callout warm" style="text-align:center; margin-top:18px;">
+      <strong>${info.leaves} leaves, ${(info.acc*100).toFixed(1)}% training accuracy.</strong> ${msgs[currentDepth]}
     </div>
+    <div class="small-note"><code>max_depth</code> is the <em>maximum</em> depth. Some branches stop earlier when a group is already pure.</div>
   `;
 }
 
-/* ---------- Stage 2: Bagging ---------- */
-const FOREST_VOTES = [
-  { tree: 1, vote: 'fail' }, { tree: 2, vote: 'pass' }, { tree: 3, vote: 'fail' },
-  { tree: 4, vote: 'fail' }, { tree: 5, vote: 'pass' },
-];
-let forestRevealed = 0; // how many tree cards shown so far
-function renderBagging() {
+/* ---------- Stage 1b: train vs. test ---------- */
+function renderTrainTest() {
+  const W = 640, H = 300, L = 52, R = 16, T = 16, B = 44, pw = W-L-R, ph = H-T-B;
+  const xs = d => L + (d-1)/7*pw, ys = a => T + ph - (a-0.5)/0.5*ph;
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
-    <h2>Part 2 &middot; Bagging: Wisdom of the (Random) Crowd</h2>
-    <p class="lede">A new restaurant: 6 violations, 200 days until reinspection &mdash; right in the messy
-    middle of the chart, where individual trees tend to disagree. A random forest asks 5 different trees
-    (each grown on a different random slice of the training data) and lets them vote. Click to ask each
-    tree, one at a time.</p>
+    <h2>Part 1 &middot; Does Training Accuracy Tell the Whole Story?</h2>
+    <p class="lede">Now we do what the notebook does with real data: split first. These ${TT_SPLIT.ntr + TT_SPLIT.nte} restaurants
+    were split once (<code>train_test_split(..., test_size=0.3, stratify=y, random_state=383)</code>) into
+    ${TT_SPLIT.ntr} training and ${TT_SPLIT.nte} test restaurants. Trees of each depth are fit on the training set only, then
+    scored on both. All numbers are computed with scikit-learn.</p>
+    <div id="ttChart"></div>
+    <div class="compare-table"><table>
+      <thead><tr><th>max_depth</th><th>Leaves</th><th>Training acc.</th><th>Test acc.</th><th>Avg. test acc.<br>(50 splits)</th></tr></thead>
+      <tbody id="ttBody"></tbody>
+    </table></div>
+    <div class="callout warm" id="ttNote"></div>
+  `;
+  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
+
+  const sv = svg('svg', {width:W, height:H, viewBox:`0 0 ${W} ${H}`});
+  sv.appendChild(svg('line', {x1:L, y1:T, x2:L, y2:T+ph, stroke:'#cfcdc3', 'stroke-width':2}));
+  sv.appendChild(svg('line', {x1:L, y1:T+ph, x2:L+pw, y2:T+ph, stroke:'#cfcdc3', 'stroke-width':2}));
+  [0.5,0.6,0.7,0.8,0.9,1.0].forEach(a => {
+    const y = ys(a);
+    sv.appendChild(svg('line', {x1:L-5, y1:y, x2:L, y2:y, stroke:'#cfcdc3'}));
+    const t = svg('text', {x:L-9, y:y+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'}); t.textContent = Math.round(a*100)+'%'; sv.appendChild(t);
+  });
+  for (let d = 1; d <= 8; d++) {
+    const t = svg('text', {x:xs(d), y:T+ph+18, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'}); t.textContent = d; sv.appendChild(t);
+  }
+  const xl = svg('text', {x:L+pw/2, y:H-6, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'}); xl.textContent = 'max_depth'; sv.appendChild(xl);
+  const line = (vals, color, dash) => {
+    const d = vals.map((v,i) => `${i?'L':'M'} ${xs(i+1).toFixed(1)} ${ys(v).toFixed(1)}`).join(' ');
+    sv.appendChild(svg('path', {d, fill:'none', stroke:color, 'stroke-width':2.5, 'stroke-dasharray': dash||''}));
+    vals.forEach((v,i) => sv.appendChild(svg('circle', {cx:xs(i+1), cy:ys(v), r:4, fill:color})));
+  };
+  line(TT_ROWS.map(r => r.train), '#2f9e56');
+  line(TT_ROWS.map(r => r.test), '#d64545');
+  line(TT_REPEAT.slice(0,8).map(r => r.test), '#2b6cb0', '6 4');
+  [['Training accuracy','#2f9e56',0],['Test accuracy (this split)','#d64545',1],['Average test accuracy, 50 splits','#2b6cb0',2]].forEach(([txt,col,k]) => {
+    sv.appendChild(svg('rect', {x:L+pw-215, y:T+8+k*18, width:12, height:4, fill:col}));
+    const t = svg('text', {x:L+pw-198, y:T+14+k*18, 'font-size':11, fill:'#5b6472'}); t.textContent = txt; sv.appendChild(t);
+  });
+  document.getElementById('ttChart').appendChild(sv);
+
+  const body = document.getElementById('ttBody');
+  TT_ROWS.forEach((r,i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.depth}</td><td>${r.leaves}</td><td>${(r.train*100).toFixed(1)}%</td><td>${(r.test*100).toFixed(1)}%</td><td>${(TT_REPEAT[i].test*100).toFixed(1)}%</td>`;
+    body.appendChild(tr);
+  });
+  const tr = document.createElement('tr');
+  const u = TT_UNLIMITED, ua = TT_REPEAT[8];
+  tr.innerHTML = `<td>no limit</td><td>${u.leaves}</td><td>${(u.train*100).toFixed(1)}%</td><td>${(u.test*100).toFixed(1)}%</td><td>${(ua.test*100).toFixed(1)}%</td>`;
+  body.appendChild(tr);
+
+  document.getElementById('ttNote').innerHTML = `
+    <strong>How to read this.</strong> Training accuracy climbs to 100% by depth ${TT_ROWS.find(r=>r.train>=1).depth} and then
+    stays there (the tree has run out of mixed groups, so deeper limits change nothing &mdash; the unrestricted tree is
+    only ${u.depth} levels deep). Test accuracy did <em>not</em> follow it up: on this split it is
+    ${(u.test*100).toFixed(1)}% for the unrestricted tree, and averaged over 50 different random splits it levels off at roughly
+    75% from depth 3 onward.
+    <br><br><strong>Be careful with small data.</strong> With only ${TT_SPLIT.nte} test restaurants, each one is worth
+    ${(100/TT_SPLIT.nte).toFixed(1)} percentage points, so one split is noisy &mdash; that's why the dashed line averages 50
+    splits. The honest takeaway is not "deeper trees always do worse," but: <em>a high training score tells you the model
+    fit the data it saw; only held-out data tells you whether it learned something that carries over.</em>
+    Extra depth here buys more training accuracy and no extra test accuracy.`;
+}
+
+/* ---------- Stage 2: Bagging ---------- */
+const FOREST_VOTES = FOREST_VOTES_RAW.map((v,i) => ({ tree: i+1, vote: v ? 'pass' : 'fail' }));
+let forestRevealed = 0; // how many tree cards shown so far
+function renderBagging() {
+  const nT = FOREST_VOTES.length;
+  const p = document.createElement('div'); p.className = 'panel';
+  p.innerHTML = `
+    <h2>Part 2 &middot; Random Forest: Many Trees Vote</h2>
+    <p class="lede">A random forest grows many decision trees. Each tree is trained on a <strong>bootstrap sample</strong>
+    (rows drawn at random <em>with replacement</em>, so no two trees see exactly the same restaurants), and at each split
+    it may only consider a <strong>random subset of the features</strong>. To predict, every tree votes and the forest
+    takes the <strong>majority vote</strong>.</p>
+    <p class="lede">A new restaurant: 6 violations, 200 days until reinspection &mdash; in the messy middle of the chart.
+    These ${nT} votes come from a real <code>RandomForestClassifier(n_estimators=5, random_state=1)</code> fit on the 40
+    restaurants (real forests use many more trees; the notebook uses 100). Click to ask each tree.</p>
     <div class="forest-row" id="forestRow"></div>
     <div class="controls">
-      <button class="btn-nav" id="askBtn" ${forestRevealed>=5 ? 'disabled' : ''}>
-        ${forestRevealed===0 ? 'Ask Tree 1' : (forestRevealed<5 ? `Ask Tree ${forestRevealed+1}` : 'All Trees Asked')}
+      <button class="btn-nav" id="askBtn" ${forestRevealed>=nT ? 'disabled' : ''}>
+        ${forestRevealed===0 ? 'Ask Tree 1' : (forestRevealed<nT ? `Ask Tree ${forestRevealed+1}` : 'All Trees Asked')}
       </button>
       ${forestRevealed>0 ? '<button class="btn-nav back" id="resetForestBtn">Reset</button>' : ''}
     </div>
@@ -405,7 +521,7 @@ function renderBagging() {
   });
 
   document.getElementById('askBtn').onclick = () => {
-    if (forestRevealed < 5) { forestRevealed++; renderBagging(); }
+    if (forestRevealed < nT) { forestRevealed++; renderBagging(); }
   };
   const resetBtn = document.getElementById('resetForestBtn');
   if (resetBtn) resetBtn.onclick = () => { forestRevealed = 0; renderBagging(); };
@@ -418,67 +534,125 @@ function renderBagging() {
     const passVotes = seen.filter(v => v.vote==='pass').length;
     const failVotes = seen.length - passVotes;
     let msg;
-    if (forestRevealed < 5) {
-      msg = `${passVotes} pass, ${failVotes} fail so far &mdash; individual trees are split. Keep going.`;
+    if (forestRevealed < nT) {
+      msg = `${passVotes} pass, ${failVotes} fail so far &mdash; the trees are split. Keep going.`;
     } else {
-      const winner = passVotes > failVotes ? 'FAIL is wrong, PASS wins' : 'FAIL wins';
-      msg = `<strong>Final vote: ${failVotes} fail, ${passVotes} pass &rarr; the forest predicts FAIL.</strong>
-             Two of the five trees said "pass," probably chasing some quirk in the particular random sample
-             of restaurants they happened to see. Voting absorbed that disagreement instead of committing to
-             any one tree's mistake &mdash; that's the entire point of bagging.`;
+      const call = passVotes > failVotes ? 'PASS' : 'FAIL';
+      msg = `<strong>Final vote: ${failVotes} fail, ${passVotes} pass &rarr; the forest predicts ${call}.</strong>
+             The trees disagree because each saw different restaurants and different features. Combining many
+             different trees often makes predictions <em>more stable</em> than any single tree (less variance), but
+             it is not a guarantee: a forest can still be wrong, and it does not always beat a single tree.
+             Notice the vote is only 3 to 2 &mdash; this restaurant really is a borderline case.`;
     }
     tally.innerHTML = `
       <div class="vote-tally">
         <div class="vote-box pass"><span class="n">${passVotes}</span>pass votes</div>
         <div class="vote-box fail"><span class="n">${failVotes}</span>fail votes</div>
       </div>
-      <div class="callout ${forestRevealed<5 ? '' : 'warm'}" style="text-align:center;">${msg}</div>
+      <div class="callout ${forestRevealed<nT ? '' : 'warm'}" style="text-align:center;">${msg}</div>
     `;
   }
 }
 
 /* ---------- Stage 3: Boosting ---------- */
-// 8 illustrative restaurants; each round's tree fixes some of the previous round's mistakes.
-const BOOST_LABELS = ['R1','R2','R3','R4','R5','R6','R7','R8'];
-const BOOST_ROUNDS = [
-  { wrong: [0,1,2,3,4,5,6,7], note: "Round 0: the very first guess &mdash; predict \"fail\" for everyone, since fail is the majority class. 8 mistakes." },
-  { wrong: [0,1,4],           note: "Round 1: a small tree is trained just to fix Round 0's mistakes. Down to 3 mistakes." },
-  { wrong: [4],                note: "Round 2: another small tree targets what's still wrong. Down to 1 mistake." },
-  { wrong: [],                  note: "Round 3: one more correction, and the ensemble gets everyone right &mdash; on this small illustrative set, at least." },
-];
+// Real results from GradientBoostingClassifier(n_estimators=30, learning_rate=0.2, max_depth=2, random_state=383),
+// fit on the same 28 training restaurants as the train/test screen (BOOST[k] = metrics after k trees).
 let boostRound = 0;
+const BOOST_MAX = BOOST.length - 1;
+const BOOST_BEST = BOOST.reduce((b, r) => r.test_loss < b.test_loss ? r : b, BOOST[0]).round;
 function renderBoosting() {
+  const W = 640, H = 240, L = 52, R = 16, T = 14, B = 40, pw = W-L-R, ph = H-T-B;
+  const maxLoss = 1.2;
+  const xs = k => L + k/BOOST_MAX*pw, ys = v => T + ph - Math.min(v,maxLoss)/maxLoss*ph;
+  const cur = BOOST[boostRound];
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
-    <h2>Part 2 &middot; Boosting: Fixing the Last Mistake</h2>
-    <p class="lede">Eight illustrative restaurants. Instead of training 5 trees independently and voting
-    (bagging), gradient boosting trains one small tree at a time, each one aimed specifically at whatever
-    the ensemble still gets wrong. Click "Add next tree" to watch the mistakes shrink round by round.</p>
-    <div class="boost-row" id="boostRow"></div>
+    <h2>Part 2 &middot; Gradient Boosting: Adding Small Trees, One at a Time</h2>
+    <p class="lede">A random forest grows its trees independently and averages them. <strong>Gradient boosting</strong> builds
+    its trees <em>in sequence</em>. It starts with a plain guess (the share of training restaurants that passed). Each new
+    small tree is then fit to the ensemble's current <em>errors</em>, and its output is added in &mdash; scaled down by a
+    <strong>learning rate</strong> so the predictions move gradually. The goal is to reduce a <strong>loss function</strong>
+    (here, log loss, which punishes confident wrong probabilities). It does not &ldquo;fix&rdquo; individual restaurants one by one.</p>
+    <div class="small-note" style="margin:0 0 10px;">These numbers are <strong>real results</strong> from
+    <code>GradientBoostingClassifier(n_estimators=30, learning_rate=0.2, max_depth=2, random_state=383)</code>, trained
+    on the ${TT_SPLIT.ntr} training restaurants and checked on the ${TT_SPLIT.nte} held-out ones.</div>
+    <div id="boostChart"></div>
     <div class="controls">
-      <button class="btn-nav" id="boostNextBtn" ${boostRound>=BOOST_ROUNDS.length-1 ? 'disabled' : ''}>Add next tree</button>
+      <button class="btn-nav" id="boostNext1" ${boostRound>=BOOST_MAX ? 'disabled' : ''}>Add 1 tree</button>
+      <button class="btn-nav" id="boostNext5" ${boostRound>=BOOST_MAX ? 'disabled' : ''}>Add 5 trees</button>
       ${boostRound>0 ? '<button class="btn-nav back" id="boostResetBtn">Reset</button>' : ''}
     </div>
-    <div class="callout" id="boostNote" style="text-align:center;"></div>
+    <div class="split-stats">
+      <div class="split-box"><div class="lbl">Trees so far</div><div class="val">${boostRound}</div></div>
+      <div class="split-box"><div class="lbl">Training loss</div><div class="val">${cur.train_loss.toFixed(3)}</div></div>
+      <div class="split-box"><div class="lbl">Test loss</div><div class="val">${cur.test_loss.toFixed(3)}</div></div>
+      <div class="split-box"><div class="lbl">Train / test accuracy</div><div class="val">${(cur.train_acc*100).toFixed(0)}% / ${(cur.test_acc*100).toFixed(0)}%</div></div>
+    </div>
+    <div class="small-note" style="margin-top:14px;">Predicted chance of passing for 8 training restaurants (green = actually passed, red = actually failed)</div>
+    <div id="boostBars"></div>
+    <div class="callout" id="boostNote"></div>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 
-  const row = document.getElementById('boostRow');
-  const wrongSet = new Set(BOOST_ROUNDS[boostRound].wrong);
-  BOOST_LABELS.forEach((lbl, i) => {
-    const dot = document.createElement('div');
-    dot.className = 'boost-dot ' + (wrongSet.has(i) ? 'wrong' : 'right');
-    dot.textContent = wrongSet.has(i) ? '✕' : '✓';
-    row.appendChild(dot);
+  const sv = svg('svg', {width:W, height:H, viewBox:`0 0 ${W} ${H}`});
+  sv.appendChild(svg('line', {x1:L, y1:T, x2:L, y2:T+ph, stroke:'#cfcdc3', 'stroke-width':2}));
+  sv.appendChild(svg('line', {x1:L, y1:T+ph, x2:L+pw, y2:T+ph, stroke:'#cfcdc3', 'stroke-width':2}));
+  [0,0.4,0.8,1.2].forEach(v => {
+    const t = svg('text', {x:L-9, y:ys(v)+4, 'text-anchor':'end', 'font-size':11, fill:'#5b6472'}); t.textContent = v.toFixed(1); sv.appendChild(t);
+    sv.appendChild(svg('line', {x1:L, y1:ys(v), x2:L+pw, y2:ys(v), stroke:'#eee'}));
+  });
+  [0,10,20,30].forEach(k => {
+    const t = svg('text', {x:xs(k), y:T+ph+16, 'text-anchor':'middle', 'font-size':11, fill:'#5b6472'}); t.textContent = k; sv.appendChild(t);
+  });
+  const xl = svg('text', {x:L+pw/2, y:H-4, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472'}); xl.textContent = 'Number of trees'; sv.appendChild(xl);
+  const yl = svg('text', {x:14, y:T+ph/2, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#5b6472', transform:`rotate(-90 14 ${T+ph/2})`}); yl.textContent = 'Log loss'; sv.appendChild(yl);
+  const drawLine = (key, color) => {
+    const pts = BOOST.slice(0, boostRound+1).map((r,k) => `${k?'L':'M'} ${xs(k).toFixed(1)} ${ys(r[key]).toFixed(1)}`).join(' ');
+    sv.appendChild(svg('path', {d:pts, fill:'none', stroke:color, 'stroke-width':2.5}));
+    sv.appendChild(svg('circle', {cx:xs(boostRound), cy:ys(cur[key]), r:5, fill:color}));
+  };
+  drawLine('train_loss', '#2f9e56'); drawLine('test_loss', '#d64545');
+  [['Training loss','#2f9e56',0],['Test loss','#d64545',1]].forEach(([txt,col,k]) => {
+    sv.appendChild(svg('rect', {x:L+12, y:T+6+k*16, width:12, height:4, fill:col}));
+    const t = svg('text', {x:L+29, y:T+12+k*16, 'font-size':11, fill:'#5b6472'}); t.textContent = txt; sv.appendChild(t);
+  });
+  document.getElementById('boostChart').appendChild(sv);
+
+  const bars = document.getElementById('boostBars');
+  bars.style.cssText = 'display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;';
+  BOOST_PTS.y.forEach((yy, i) => {
+    const pr = BOOST_PTS.probs[boostRound][i];
+    const d = document.createElement('div');
+    d.style.cssText = 'width:62px; text-align:center; font-size:12px;';
+    d.innerHTML = `<div style="height:70px; background:#f0efe9; border-radius:6px; position:relative; overflow:hidden;">
+        <div style="position:absolute; bottom:0; left:0; right:0; height:${(pr*100).toFixed(0)}%; background:${yy ? '#2f9e56' : '#d64545'}; opacity:0.85;"></div></div>
+      <div style="margin-top:4px; font-weight:700;">${(pr*100).toFixed(0)}%</div>`;
+    bars.appendChild(d);
   });
 
-  document.getElementById('boostNextBtn').onclick = () => {
-    if (boostRound < BOOST_ROUNDS.length-1) { boostRound++; renderBoosting(); }
-  };
-  const resetBtn = document.getElementById('boostResetBtn');
-  if (resetBtn) resetBtn.onclick = () => { boostRound = 0; renderBoosting(); };
+  let note;
+  if (boostRound === 0) {
+    note = `<strong>Round 0:</strong> before any trees, every restaurant gets the same predicted chance of passing &mdash; the overall
+            pass rate in the training data (${(BOOST_PTS.base*100).toFixed(0)}%). Add a tree and watch the bars move.`;
+  } else if (boostRound < BOOST_BEST) {
+    note = `Each tree nudges the predicted chances a little, and both losses are falling: the ensemble is picking up real
+            structure, and accuracy changes with it &mdash; but notice it does not simply &ldquo;fix the next mistake.&rdquo;`;
+  } else if (boostRound <= BOOST_BEST + 3) {
+    note = `Around ${BOOST_BEST} trees the <strong>test loss reaches its lowest point</strong> (${BOOST[BOOST_BEST].test_loss.toFixed(3)}).
+            The training loss is still falling. Keep adding trees and compare the two lines.`;
+  } else {
+    note = `<strong>Training loss keeps shrinking (${cur.train_loss.toFixed(3)}), but test loss has turned back up
+            (${cur.test_loss.toFixed(3)}).</strong> The ensemble is now fitting quirks of these ${TT_SPLIT.ntr} training restaurants.
+            Adding more trees does not guarantee better predictions on new data; the number of trees and the learning rate are
+            settings you tune (Lecture 11), using validation data and not the test set. (Only ${TT_SPLIT.nte} test restaurants here, so treat the exact
+            numbers as illustrative.)`;
+  }
+  document.getElementById('boostNote').innerHTML = note;
 
-  document.getElementById('boostNote').textContent = BOOST_ROUNDS[boostRound].note;
+  const step = n => { boostRound = Math.min(BOOST_MAX, boostRound + n); renderBoosting(); };
+  document.getElementById('boostNext1').onclick = () => step(1);
+  document.getElementById('boostNext5').onclick = () => step(5);
+  const rb = document.getElementById('boostResetBtn'); if (rb) rb.onclick = () => { boostRound = 0; renderBoosting(); };
 }
 
 /* ---------- Stage 4: Recap ---------- */
@@ -487,32 +661,35 @@ function renderTreeSummary() {
   p.innerHTML = `
     <h2>Recap</h2>
     <ul class="recap-list">
-      <li>A <strong>decision tree</strong> predicts by asking a sequence of yes/no questions, each one
-      picked to split the data as "purely" as possible. Its boundary is always made of axis-aligned
-      rectangles.</li>
-      <li>An unrestricted tree keeps asking questions until every training point is isolated &mdash;
-      100% training accuracy, but it's memorized the training set, not learned the pattern.
-      <code>max_depth</code> reins that in.</li>
-      <li>A <strong>random forest</strong> grows many trees on random samples of the data and features,
-      then lets them vote (<strong>bagging</strong>) &mdash; individual trees' overfitting tends to cancel
-      out in the average.</li>
-      <li><strong>Gradient boosting</strong> (what XGBoost implements) builds trees one at a time, each
-      one correcting whatever the ensemble so far still gets wrong.</li>
+      <li>A <strong>decision tree</strong> predicts by asking a sequence of yes/no questions. At each step it picks the
+      question with the lowest <strong>weighted Gini impurity</strong> (the purest groups). Its boundary is always made of
+      axis-aligned rectangles.</li>
+      <li><code>max_depth</code> caps how many questions in a row the tree may ask (some branches stop earlier). An
+      unrestricted tree reaches 100% <em>training</em> accuracy; what matters is accuracy on data it hasn't seen.</li>
+      <li>A <strong>random forest</strong> trains many trees on bootstrap samples, with random feature subsets at each
+      split, and combines them by majority vote. This often makes predictions more stable than one tree, but it is not
+      guaranteed to be better.</li>
+      <li><strong>Gradient boosting</strong> (what XGBoost implements) adds small trees in sequence, each aimed at reducing
+      a loss function, moving predictions gradually. More trees can keep lowering <em>training</em> loss while test
+      performance stalls or worsens.</li>
+      <li>Trees can also predict <strong>numbers</strong>, not just categories: a regression tree's leaves predict an
+      average. You'll see that in Part 4 of the notebook.</li>
     </ul>
     <div class="compare-table">
       <table>
         <thead><tr><th></th><th>Single tree</th><th>Random forest</th><th>Gradient boosting</th></tr></thead>
         <tbody>
           <tr><td>Trees built</td><td>one</td><td>many, independently</td><td>many, in sequence</td></tr>
-          <tr><td>Combines by</td><td>&mdash;</td><td>majority vote</td><td>additive correction</td></tr>
-          <tr><td>Overfitting risk</td><td>high if unrestricted</td><td>lower, not zero</td><td>controlled by learning rate / rounds</td></tr>
+          <tr><td>Combines by</td><td>&mdash;</td><td>majority vote</td><td>adding small corrections</td></tr>
+          <tr><td>Overfitting risk</td><td>high if unrestricted</td><td>lower, not zero</td><td>depends on learning rate / number of trees</td></tr>
         </tbody>
       </table>
     </div>
     <div class="callout">
       <strong>Now open <code>lect10_tree_models.ipynb</code></strong> &mdash; Part 1 fits real decision
-      trees on this exact toy dataset, Part 2 builds the random forest, and Part 3 tests all three
-      approaches (plus feature importance) against real NYC restaurant inspection data.
+      trees on this exact toy dataset, Part 2 builds the random forest, Part 3 tests all three
+      approaches (plus feature importance) against real NYC restaurant inspection data, and Part 4 shows
+      regression trees predicting a number.
     </div>
   `;
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
@@ -522,7 +699,8 @@ function renderTreeSummary() {
 const STAGES = [
   {label: 'Warm-Up · Which Question Splits Best?', render: renderSplitChoice},
   {label: 'Part 1 · How Deep Is Too Deep?', render: renderDepthExplorer},
-  {label: 'Part 2 · Bagging', render: renderBagging},
+  {label: 'Part 1 · Training vs. Test Accuracy', render: renderTrainTest},
+  {label: 'Part 2 · Random Forest', render: renderBagging},
   {label: 'Part 2 · Boosting', render: renderBoosting},
   {label: 'Recap', render: renderTreeSummary},
 ];
