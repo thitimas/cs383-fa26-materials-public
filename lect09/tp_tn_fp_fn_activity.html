@@ -218,10 +218,10 @@ function renderR2(){
   h+=`</div>`;
   const cells=[ // row actual, col pred
     {r:true,c:true,label:"TP"},{r:true,c:false,label:"FN"},{r:false,c:true,label:"FP"},{r:false,c:false,label:"TN"}];
-  h+=`<div class="mx"><div></div><div class="hd">MODEL SAID<br>POSITIVE</div><div class="hd">MODEL SAID<br>NEGATIVE</div>`;
-  [true,false].forEach(rowPos=>{
-    h+=`<div class="hd">REALITY<br>${rowPos?"POSITIVE":"NEGATIVE"}</div>`;
-    [true,false].forEach(colPos=>{
+  h+=`<div class="mx"><div></div><div class="hd">MODEL SAID<br>NEGATIVE (0)</div><div class="hd">MODEL SAID<br>POSITIVE (1)</div>`;
+  [false,true].forEach(rowPos=>{
+    h+=`<div class="hd">REALITY<br>${rowPos?"POSITIVE (1)":"NEGATIVE (0)"}</div>`;
+    [false,true].forEach(colPos=>{
       const cell=cells.find(x=>x.r===rowPos&&x.c===colPos);
       const here=R2.filter(c=>r2.placed[c.id]===cell.label);
       const filled=here.length>0;
@@ -231,7 +231,8 @@ function renderR2(){
   });
   h+=`</div><div class="fb ${r2.fbClass}" style="text-align:center;margin-top:12px">${r2.fb}</div>`;
   if(Object.keys(r2.placed).length===R2.length){
-    h+=`<div class="callout"><strong>Look at the diagonals.</strong> TP and TN (top-left and bottom-right) are the two cells where the model was <b>right</b>. FN and FP are the two <b>mistakes</b>. FP is a false alarm; FN is a miss.</div>`;
+    h+=`<div class="callout"><strong>Look at the diagonals.</strong> TN and TP (top-left and bottom-right) are the two cells where the model was <b>right</b>. FP and FN are the two <b>mistakes</b>. FP is a false alarm; FN is a miss.</div>
+    <div class="callout warm"><strong>About this layout:</strong> there is no single standard. This is the scikit-learn layout we use in this course: rows = actual, columns = predicted, classes in the order 0 then 1 (positive = 1), so <code>confusion_matrix</code> gives <code>[[TN, FP], [FN, TP]]</code>. Some textbooks put TP in the top-left instead, so always check the axis labels before you trust a corner.</div>`;
   }
   return h+`</div>`;
 }
@@ -281,6 +282,7 @@ function renderRecap(){
    <li><b>Q1: what did the model say?</b> Hunting-for thing &rarr; Positive. Otherwise &rarr; Negative. That is the second word.</li>
    <li><b>Q2: was it right?</b> Yes &rarr; True. No &rarr; False. That is the first word.</li>
    <li><b>FP is a false alarm; FN is a miss.</b> Which one hurts more depends on the problem: a missed fire (FN) is far worse than a false alarm (FP); a blocked legitimate purchase (FP) and a missed fraud (FN) both cost something.</li>
+   <li><b>The matrix layout varies.</b> In this course it is the scikit-learn one: rows = actual, columns = predicted, order 0 then 1, so <code>[[TN, FP], [FN, TP]]</code>. Other sources differ, so read the axis labels.</li>
    <li><b>“Positive” means “the thing we are hunting for,”</b> not “good.” Flip the positive class and the labels swap.</li>
   </ul>
   <div class="callout"><strong>Where this goes next:</strong> precision and recall are built from these four counts. <b>Precision</b> asks, of everything the model flagged positive, how much was right (TP vs. FP)? <b>Recall</b> asks, of everything that really was positive, how much did it catch (TP vs. FN)?</div>
