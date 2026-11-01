@@ -79,17 +79,17 @@
 <header>
   <h1>Four Labels, Two Questions</h1>
   <p>CS383 · Lecture 9 · Unplugged activity (practice version): TP, TN, FP and FN</p>
-  <p>No memorizing. You will work out each label by answering two questions. About 10–15 minutes.</p>
+  <p>No memorizing. You will work out each label by answering two questions. About 15 minutes.</p>
 </header>
 <div id="progressWrap"><div id="progressTrack"></div><div id="stageLabel"></div></div>
 <div id="app"></div>
 <div class="navrow"><button class="nav back" id="backBtn">&larr; Back</button><button class="nav" id="nextBtn">Next &rarr;</button></div>
-<footer>CS383 Fall 2026 · The paper-card version of this activity pairs with this page. No data leaves your browser.</footer>
+<footer>CS383 Fall 2026 · No data leaves your browser.</footer>
 
 <script>
 const SCEN = {"spam": {"title": "Spam filter", "pos": "spam", "neg": "not spam"}, "strep": {"title": "Strep throat test", "pos": "has strep throat", "neg": "no strep"}, "alarm": {"title": "Smoke alarm", "pos": "a fire", "neg": "no fire"}, "fraud": {"title": "Card fraud detector", "pos": "fraud", "neg": "legitimate"}};
 const CARDS = [{"id": "A", "key": "a1", "scen": "alarm", "item": "Grease fire on the stove", "said": "ALARM SOUNDS", "real": "There is a fire", "predPos": true, "actPos": true, "round": 1, "label": "TP"}, {"id": "B", "key": "a2", "scen": "alarm", "item": "Quiet night at home", "said": "ALARM STAYS SILENT", "real": "There is no fire", "predPos": false, "actPos": false, "round": 1, "label": "TN"}, {"id": "C", "key": "f4", "scen": "fraud", "item": "Stolen card used to buy gift cards", "said": "APPROVED", "real": "It is fraud", "predPos": false, "actPos": true, "round": 1, "label": "FN"}, {"id": "D", "key": "f3", "scen": "fraud", "item": "Cardholder’s own plane ticket, bought abroad", "said": "FLAGGED as fraud", "real": "It is legitimate", "predPos": true, "actPos": false, "round": 1, "label": "FP"}, {"id": "E", "key": "a4", "scen": "alarm", "item": "Fire smoldering inside a wall", "said": "ALARM STAYS SILENT", "real": "There is a fire", "predPos": false, "actPos": true, "round": 2, "label": "FN"}, {"id": "F", "key": "s1", "scen": "spam", "item": "Email: “WIN a free cruise — click now!”", "said": "SPAM", "real": "It really is spam", "predPos": true, "actPos": true, "round": 1, "label": "TP"}, {"id": "G", "key": "t3", "scen": "strep", "item": "Healthy patient with a mild cold", "said": "Test result: POSITIVE", "real": "The patient has no strep", "predPos": true, "actPos": false, "round": 2, "label": "FP"}, {"id": "H", "key": "f2", "scen": "fraud", "item": "$37 weekly grocery run", "said": "APPROVED", "real": "It is legitimate", "predPos": false, "actPos": false, "round": 2, "label": "TN"}, {"id": "I", "key": "t1", "scen": "strep", "item": "Patient with a sore throat who has strep", "said": "Test result: POSITIVE", "real": "The patient has strep", "predPos": true, "actPos": true, "round": 2, "label": "TP"}, {"id": "J", "key": "t2", "scen": "strep", "item": "Healthy patient, routine visit", "said": "Test result: NEGATIVE", "real": "The patient has no strep", "predPos": false, "actPos": false, "round": 1, "label": "TN"}, {"id": "K", "key": "a3", "scen": "alarm", "item": "Steam from a hot shower", "said": "ALARM SOUNDS", "real": "There is no fire", "predPos": true, "actPos": false, "round": 2, "label": "FP"}, {"id": "L", "key": "s2", "scen": "spam", "item": "Email: a coworker asking about lunch", "said": "NOT SPAM", "real": "It is not spam", "predPos": false, "actPos": false, "round": 2, "label": "TN"}, {"id": "M", "key": "t4", "scen": "strep", "item": "Patient with a sore throat who has strep", "said": "Test result: NEGATIVE", "real": "The patient has strep", "predPos": false, "actPos": true, "round": 1, "label": "FN"}, {"id": "N", "key": "s4", "scen": "spam", "item": "Email: “Your bank account is locked — log in here”", "said": "NOT SPAM", "real": "It really is spam (phishing)", "predPos": false, "actPos": true, "round": 2, "label": "FN"}, {"id": "O", "key": "s3", "scen": "spam", "item": "Email: your professor’s assignment reminder", "said": "SPAM", "real": "It is not spam", "predPos": true, "actPos": false, "round": 1, "label": "FP"}, {"id": "P", "key": "f1", "scen": "fraud", "item": "$2,400 electronics order on a stolen card", "said": "FLAGGED as fraud", "real": "It is fraud", "predPos": true, "actPos": true, "round": 2, "label": "TP"}];
-const STAGES = ["Intro", "Round 1: Two Questions", "Round 2: The Matrix", "Round 3: Flip It", "Recap"];
+const STAGES = ["Intro", "Round 1: Two Questions", "Round 2: The Matrix", "Round 3: Which Mistake Is Worse?", "Round 4: Flip It", "Recap"];
 const NAMES = {TP:"True Positive", TN:"True Negative", FP:"False Positive", FN:"False Negative"};
 const EXPLAIN = {
   TP:"The model said POSITIVE and it was right. It found what it was hunting for.",
@@ -116,6 +116,18 @@ const R3 = [
    why:"The filter said NOT SPAM = predicted positive, but reality was spam = actual negative. It was wrong, so it is a False Positive. (It used to be a False Negative.)"}
 ];
 let r3 = R3.map(()=>({picked:null, correct:false}));
+// Round 3 (worse mistake) data and state
+const WORSE = [
+  {scen:"spam",  fp:"A real email (your professor’s reminder) lands in the spam folder.", fn:"A spam or phishing email reaches your inbox.", ans:null,
+   note:"Both answers can be defended. For FP: you could miss something important and never know. For FN: a phishing email that gets through can do real harm. The answer depends on how costly each mistake is to <i>you</i>."},
+  {scen:"strep", fp:"A healthy patient gets an unneeded follow-up test or antibiotics.", fn:"A sick patient is told “no strep” and sent home untreated.", ans:"FN",
+   note:"Usually FN is worse: an untreated infection can spread or cause complications, while a false positive usually just means a second test. (A doctor worried about antibiotic overuse might weigh FP more, so it is a judgment about costs.)"},
+  {scen:"alarm", fp:"The alarm goes off for shower steam. Annoying, but nobody is hurt.", fn:"A real fire starts and the alarm stays silent.", ans:"FN",
+   note:"FN is clearly worse here: a missed fire can cost lives. This is why smoke alarms are built to be oversensitive and accept lots of false alarms."},
+  {scen:"fraud", fp:"Your own legitimate purchase is blocked at the register.", fn:"A thief’s purchase goes through and the bank and customer lose money.", ans:null,
+   note:"Both can be defended. FN loses money and hurts the customer; FP blocks legitimate buying and frustrates the customer, who may switch banks. The right balance depends on what each mistake costs."}
+];
+let rw = WORSE.map(()=>({picked:null, reason:""}));
 
 function el(html){const d=document.createElement("div");d.innerHTML=html;return d.firstElementChild}
 function caseHTML(c, showReal=true){
@@ -138,7 +150,8 @@ function renderProgress(){
 function canAdvance(){
   if(stage===1) return r1.finished;
   if(stage===2) return Object.keys(r2.placed).length===R2.length;
-  if(stage===3) return r3.every(x=>x.correct);
+  if(stage===3) return rw.every((x,i)=>x.picked && (WORSE[i].ans===null || x.picked===WORSE[i].ans));
+  if(stage===4) return r3.every(x=>x.correct);
   return true;
 }
 
@@ -223,8 +236,31 @@ function renderR2(){
   return h+`</div>`;
 }
 
+function renderWorse(){
+  let h=`<div class="panel"><h2>Round 3 · Which mistake is worse?</h2>
+  <p class="lede">A <b>false positive (FP)</b> is a false alarm. A <b>false negative (FN)</b> is a miss. They are not equally bad, and which one is worse depends on the problem. For each scenario, pick the mistake you think is worse. Optionally, type a one-sentence reason (nothing is saved).</p>`;
+  WORSE.forEach((w,i)=>{
+    const s=SCEN[w.scen], st=rw[i];
+    const done = st.picked && (w.ans===null || st.picked===w.ans);
+    h+=`<div class="qbox"><div class="q">${s.title} <span style="font-weight:500;color:#5b6472">(positive = ${s.pos})</span></div>
+      <div class="sub"><b>FP:</b> ${w.fp}<br><b>FN:</b> ${w.fn}</div><div class="opts">`;
+    ["FP","FN"].forEach(o=>{
+      let cls="pick";
+      if(st.picked===o) cls += (w.ans===null||o===w.ans)?" correct":" incorrect";
+      h+=`<button class="${cls}" data-w="${i}" data-o="${o}">${o} is worse</button>`;
+    });
+    h+=`</div><textarea data-wr="${i}" rows="2" placeholder="Because..." style="width:100%;margin-top:10px;border-radius:8px;border:1px solid #cfcdc3;padding:8px;font:inherit;font-size:13.5px">${st.reason}</textarea>`;
+    if(st.picked && w.ans!==null && st.picked!==w.ans) h+=`<div class="fb wrong">Think about it again: compare what each mistake costs in this scenario.</div>`;
+    if(done) h+=`<div class="fb right">${w.note}</div>`;
+    h+=`</div>`;
+  });
+  if(rw.every((x,i)=>x.picked && (WORSE[i].ans===null || x.picked===WORSE[i].ans)))
+    h+=`<div class="callout"><strong>Why this matters next:</strong> if misses (FN) are what you fear, you watch <b>recall</b>. If false alarms (FP) are what you fear, you watch <b>precision</b>. Choosing which mistake is worse is choosing which metric to care about most.</div>`;
+  return h+`</div>`;
+}
+
 function renderR3(){
-  let h=`<div class="panel"><h2>Round 3 · Flip the positive class</h2>
+  let h=`<div class="panel"><h2>Round 4 · Flip the positive class</h2>
   <p class="lede">Which class counts as “positive” is a choice. Suppose the spam team decides to hunt for <b>good email</b>: <b>NOT SPAM is now the positive class</b>. The emails and the filter do not change. Does the label?</p>`;
   R3.forEach((q,i)=>{
     const c=byId(q.id);
@@ -254,7 +290,7 @@ function renderRecap(){
 function render(){
   renderProgress();
   const app=document.getElementById("app");
-  app.innerHTML = [renderIntro, renderR1, renderR2, renderR3, renderRecap][stage]();
+  app.innerHTML = [renderIntro, renderR1, renderR2, renderWorse, renderR3, renderRecap][stage]();
   bind();
   renderProgress();
 }
@@ -300,6 +336,10 @@ function bind(){
     });
   }
   if(stage===3){
+    app.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ rw[+b.dataset.w].picked=b.dataset.o; render(); });
+    app.querySelectorAll("[data-wr]").forEach(t=>t.oninput=()=>{ rw[+t.dataset.wr].reason=t.value; });
+  }
+  if(stage===4){
     app.querySelectorAll("[data-r3]").forEach(b=>b.onclick=()=>{
       const i=+b.dataset.r3, o=b.dataset.o; r3[i].picked=o; r3[i].correct=(o===R3[i].ans); render();
     });
