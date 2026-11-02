@@ -131,8 +131,8 @@
 <header>
   <h1>Lecture 9 Unplugged Activity — Precision, Recall, and the Cost of Being Wrong</h1>
   <p>No coding yet. Twenty transactions, two of them fraud. See why 90% accuracy isn't always impressive,
-  practice telling apart the four kinds of predictions, meet the confusion matrix, move a threshold and
-  watch what changes, then build a ROC curve one point at a time.</p>
+  meet the confusion matrix, move a threshold and watch what changes, then build a ROC curve one
+  point at a time.</p>
 </header>
 
 <div id="progressWrap">
@@ -239,95 +239,17 @@ function renderLazy() {
   });
 }
 
-/* ---------- Stage 1: Practice -- What Kind of Prediction Is This? ---------- */
-const TPFPFN_SCENARIOS = [
-  { actual: 'Fraud', predicted: 'Fraud', answer: 'TP',
-    explain: 'The model predicted Fraud (Positive) and it actually was Fraud, so the prediction was correct (True). That’s a True Positive.' },
-  { actual: 'Fraud', predicted: 'Not Fraud', answer: 'FN',
-    explain: 'The model predicted Not Fraud (Negative), but it actually was Fraud, so the prediction was wrong (False). That’s a False Negative -- a missed fraud case.' },
-  { actual: 'Not Fraud', predicted: 'Fraud', answer: 'FP',
-    explain: 'The model predicted Fraud (Positive), but it actually was not fraud, so the prediction was wrong (False). That’s a False Positive -- a false alarm.' },
-  { actual: 'Not Fraud', predicted: 'Not Fraud', answer: 'TN',
-    explain: 'The model predicted Not Fraud (Negative) and it actually was not fraud, so the prediction was correct (True). That’s a True Negative.' },
-  { natural: 'The bank flagged a transaction as fraud, but it was actually legitimate.', predicted: 'Fraud', answer: 'FP',
-    explain: 'Flagging it as fraud means the model predicted Fraud (Positive) -- but it was wrong (False), since the transaction was actually legitimate. That’s a False Positive.' },
-];
-let practiceIndex = 0;
-
-function renderTPFPFN() {
-  const s = TPFPFN_SCENARIOS[practiceIndex];
-  const isLast = practiceIndex >= TPFPFN_SCENARIOS.length - 1;
-  const factsHtml = s.natural
-    ? `<p class="lede scenario-quote">"${s.natural}"</p>`
-    : `<p class="lede">Actual: <strong>${s.actual}</strong> &nbsp;&middot;&nbsp; Model predicted: <strong>${s.predicted}</strong></p>`;
-  const p = document.createElement('div'); p.className = 'panel';
-  p.innerHTML = `
-    <h2>Practice &middot; What Kind of Prediction Is This?</h2>
-    <div class="callout">
-      <strong>Positive</strong> = Fraud &nbsp;&middot;&nbsp; <strong>Negative</strong> = Not Fraud<br>
-      <strong>True</strong> = the model's prediction was correct &nbsp;&middot;&nbsp;
-      <strong>False</strong> = the model's prediction was wrong<br><br>
-      Positive does <strong>not</strong> mean good -- here it simply means Fraud.
-    </div>
-    <div class="quiz" id="practiceQuiz">
-      <div class="q">Scenario ${practiceIndex+1} of ${TPFPFN_SCENARIOS.length}</div>
-      ${factsHtml}
-      <p class="small-note">Reminder: Positive/Negative = what the model predicted &middot;
-      True/False = whether the prediction was correct</p>
-      <div class="options" id="practiceOptions">
-        <div class="opt" data-v="TP">TP</div>
-        <div class="opt" data-v="TN">TN</div>
-        <div class="opt" data-v="FP">FP</div>
-        <div class="opt" data-v="FN">FN</div>
-      </div>
-      <div class="feedback" id="practiceFeedback"></div>
-    </div>
-    <div class="controls">
-      <button class="btn-nav" id="practiceNextBtn" ${isLast ? 'style="display:none;"' : ''} disabled>Next scenario &rarr;</button>
-    </div>
-  `;
-  const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
-
-  let solved = false;
-  const nextBtn = document.getElementById('practiceNextBtn');
-
-  document.querySelectorAll('#practiceOptions .opt').forEach(opt => {
-    opt.onclick = () => {
-      if (solved) return;
-      const fb = document.getElementById('practiceFeedback');
-      document.querySelectorAll('#practiceOptions .opt').forEach(o => o.classList.remove('incorrect'));
-      if (opt.dataset.v === s.answer) {
-        solved = true;
-        opt.classList.add('correct');
-        fb.className = 'feedback right';
-        fb.textContent = s.explain + (isLast
-          ? " You've now worked through all four cases, plus one tricky one. Click Next below to continue to the confusion matrix."
-          : '');
-        if (!isLast) nextBtn.disabled = false;
-      } else {
-        opt.classList.add('incorrect');
-        const posneg = s.predicted === 'Fraud' ? 'Positive' : 'Negative';
-        fb.className = 'feedback wrong';
-        fb.textContent = `The model predicted ${s.predicted}, so this is ${posneg}. Was that prediction correct? Try again.`;
-      }
-    };
-  });
-
-  nextBtn.onclick = () => {
-    if (practiceIndex < TPFPFN_SCENARIOS.length - 1) { practiceIndex++; renderTPFPFN(); }
-  };
-}
-
-/* ---------- Stage 2: Meet the Confusion Matrix ---------- */
+/* ---------- Stage 1: Meet the Confusion Matrix ---------- */
 function renderConfusionMatrix() {
   const cm = confusionAt(0.5);
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
     <h2>Meet the Confusion Matrix</h2>
-    <p class="lede">You just practiced telling apart TP, TN, FP, and FN one at a time. Now let's organize
-    these four types of predictions into one table. Same 20 transactions, but now a real model has scored
-    each one with a risk probability. Apply the usual 0.5 cutoff and every prediction lands in one of four
-    buckets.</p>
+    <p class="lede">Every prediction falls into one of four types, depending on what the model said and
+    what was actually true. <strong>Positive</strong> means the class we are hunting for (here, fraud --
+    it does <strong>not</strong> mean "good"). <strong>True / False</strong> says whether the model's
+    prediction was correct. Same 20 transactions, but now a real model has scored each one with a risk
+    probability. Apply the usual 0.5 cutoff and every prediction lands in one of four buckets.</p>
     <div class="cm-grid">
       <div class="cm-corner"></div>
       <div class="cm-label">Predicted: not fraud</div>
@@ -383,7 +305,7 @@ function renderConfusionMatrix() {
   });
 }
 
-/* ---------- Stage 3: Move the Threshold: What Changes? ---------- */
+/* ---------- Stage 2: Move the Threshold: What Changes? ---------- */
 let threshold = 0.5;
 let tugAnswered = null; // null | 'more' | 'fewer'
 
@@ -459,7 +381,7 @@ function renderTugOfWar() {
   };
 }
 
-/* ---------- Stage 4: Build the ROC Curve ---------- */
+/* ---------- Stage 3: Build the ROC Curve ---------- */
 const ROC_THRESHOLDS = [0.65, 0.55, 0.45, 0.35, 0.25, 0.15, 0.05];
 let rocStep = 0;
 function renderROC() {
@@ -556,7 +478,6 @@ function renderSummary() {
 /* ---------- navigation shell ---------- */
 const STAGES = [
   {label: 'Warm-Up · The Lazy Classifier', render: renderLazy},
-  {label: 'Practice · TP, TN, FP, FN', render: renderTPFPFN},
   {label: 'Meet the Confusion Matrix', render: renderConfusionMatrix},
   {label: 'Move the Threshold', render: renderTugOfWar},
   {label: 'Build the ROC Curve', render: renderROC},
