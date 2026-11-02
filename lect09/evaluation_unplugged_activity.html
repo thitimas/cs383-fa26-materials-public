@@ -124,6 +124,42 @@
   .dot-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 
   .scenario-quote { font-style: italic; }
+  /* aliases + styles for the "Four Labels, Two Questions" rounds */
+  :root { --good-bg:var(--correct-bg); --good-b:var(--correct-border); --good-t:var(--correct-text);
+          --bad-bg:var(--incorrect-bg); --bad-b:var(--incorrect-border); --bad-t:var(--incorrect-text);
+          --warn-bg:var(--tricky-bg); --warn-b:var(--tricky-border); --warn-t:var(--tricky-text); --blue-bg:#eef4fb; }
+  .tp .pick { background:#fff; border:2px solid #cfcdc3; color:var(--ink); min-width:120px; }
+  .tp .pick.correct { background:var(--good-bg); border-color:var(--good-b); color:var(--good-t); }
+  .tp .pick.incorrect { background:var(--bad-bg); border-color:var(--bad-b); color:var(--bad-t); }
+  .tp .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:12px 0; }
+  .tp .qbox { background:#f5f4ef; border-radius:12px; padding:16px 18px; margin-top:16px; }
+  .tp .qbox .q { font-weight:700; margin-bottom:8px; }
+  .tp .qbox .sub { color:var(--muted); font-size:13px; margin-bottom:8px; line-height:1.5; }
+  .tp .fb { margin-top:8px; font-size:14px; line-height:1.5; min-height:20px; }
+  .tp .fb.right { color:var(--good-t); } .tp .fb.wrong { color:var(--bad-t); }
+  .tp .case { border:2px solid #cfcdc3; border-radius:14px; padding:16px 18px; background:#fff; max-width:520px; margin:0 auto; }
+  .tp .case .scen { font-weight:800; } .tp .case .pos { color:var(--muted); font-size:13px; }
+  .tp .case .tag { font-size:11px; letter-spacing:.05em; color:var(--muted); margin-top:10px; }
+  .tp .case .said { font-weight:800; color:#1e4f8a; font-size:17px; }
+  .tp .case .real { font-weight:800; color:var(--warn-t); font-size:17px; }
+  .tp .result { margin-top:16px; border-radius:12px; padding:14px 16px; text-align:center; }
+  .tp .result .big { font-size:30px; font-weight:900; }
+  .tp .result.tp { background:var(--good-bg); color:var(--good-t); } .tp .result.tn { background:var(--blue-bg); color:var(--accent); }
+  .tp .result.fp { background:var(--bad-bg); color:var(--bad-t); } .tp .result.fn { background:var(--warn-bg); color:var(--warn-t); }
+  .tp .eq { display:flex; gap:8px; justify-content:center; align-items:center; font-weight:800; margin-bottom:6px; flex-wrap:wrap; }
+  .tp .eq span { padding:4px 10px; border-radius:8px; background:#fff; }
+  .tp .pile { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0 16px; min-height:44px; }
+  .tp .chip { border:2px solid #cfcdc3; background:#fff; border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.35; max-width:240px; text-align:left; cursor:pointer; font-weight:600; }
+  .tp .chip.sel { border-color:var(--accent); background:var(--blue-bg); }
+  .tp .mx { display:grid; grid-template-columns:70px 1fr 1fr; gap:8px; max-width:640px; margin:0 auto; }
+  .tp .mx .hd { font-weight:800; color:var(--muted); font-size:12px; display:flex; align-items:center; justify-content:center; text-align:center; letter-spacing:.04em; }
+  .tp .cell { min-height:150px; border:2px dashed #b9b7ad; border-radius:12px; padding:8px; cursor:pointer; background:#fcfcfa; }
+  .tp .cell.shake { border-color:var(--bad-b); background:var(--bad-bg); }
+  .tp .cell .nm { font-weight:900; font-size:16px; margin-bottom:6px; min-height:22px; }
+  .tp .cell.filled.tp { background:var(--good-bg); border:2px solid var(--good-b); } .tp .cell.filled.tn { background:var(--blue-bg); border:2px solid var(--accent); }
+  .tp .cell.filled.fp { background:var(--bad-bg); border:2px solid var(--bad-b); } .tp .cell.filled.fn { background:var(--warn-bg); border:2px solid var(--warn-b); }
+  .tp .cell .placed { display:inline-block; background:#fff; border-radius:8px; padding:3px 8px; margin:2px; font-size:12px; font-weight:700; }
+  .tp .opts { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -131,8 +167,9 @@
 <header>
   <h1>Lecture 9 Unplugged Activity — Precision, Recall, and the Cost of Being Wrong</h1>
   <p>No coding yet. Twenty transactions, two of them fraud. See why 90% accuracy isn't always impressive,
-  meet the confusion matrix, move a threshold and watch what changes, then build a ROC curve one
-  point at a time.</p>
+  learn to name the four kinds of predictions (TP, TN, FP, FN) with two questions, sort real cases onto a
+  confusion matrix, decide which mistakes are worse, move a threshold and watch what changes, then build a
+  ROC curve one point at a time.</p>
 </header>
 
 <div id="progressWrap">
@@ -245,11 +282,9 @@ function renderConfusionMatrix() {
   const p = document.createElement('div'); p.className = 'panel';
   p.innerHTML = `
     <h2>Meet the Confusion Matrix</h2>
-    <p class="lede">Every prediction falls into one of four types, depending on what the model said and
-    what was actually true. <strong>Positive</strong> means the class we are hunting for (here, fraud --
-    it does <strong>not</strong> mean "good"). <strong>True / False</strong> says whether the model's
-    prediction was correct. Same 20 transactions, but now a real model has scored each one with a risk
-    probability. Apply the usual 0.5 cutoff and every prediction lands in one of four buckets.</p>
+    <p class="lede">Back to our 20 fraud transactions. A real model has scored each one with a risk
+    probability. Apply the usual 0.5 cutoff and every prediction lands in one of the four buckets you just
+    practiced, with <strong>fraud as the positive class</strong>.</p>
     <div class="cm-grid">
       <div class="cm-corner"></div>
       <div class="cm-label">Predicted: not fraud</div>
@@ -464,6 +499,9 @@ function renderSummary() {
     <h2>Recap</h2>
     <ul class="recap-list">
       <li>High accuracy does not always mean a useful classifier.</li>
+      <li>Two questions name every outcome: what did the model say (Positive/Negative), and was it right (True/False)?</li>
+      <li>"Positive" means the class we are hunting for, not "good." Flip it and TP&harr;TN, FP&harr;FN swap.</li>
+      <li>Our matrix layout is the scikit-learn one: rows = actual, columns = predicted, order 0 then 1, <code>[[TN, FP], [FN, TP]]</code>. Other sources differ, so read the axis labels.</li>
       <li>Different mistakes matter differently -- missed positives and false alarms are not the same.</li>
       <li>Changing the threshold changes which cases the model flags, without retraining the model.</li>
     </ul>
@@ -475,10 +513,229 @@ function renderSummary() {
   const app = document.getElementById('app'); app.innerHTML = ''; app.appendChild(p);
 }
 
+/* ================= Four Labels, Two Questions (merged practice rounds) ================= */
+const TP_SCEN = {"spam": {"title": "Spam filter", "pos": "spam", "neg": "not spam"}, "strep": {"title": "Strep throat test", "pos": "has strep throat", "neg": "no strep"}, "alarm": {"title": "Smoke alarm", "pos": "a fire", "neg": "no fire"}, "fraud": {"title": "Card fraud detector", "pos": "fraud", "neg": "legitimate"}};
+const TP_CARDS = [{"id": "A", "key": "a1", "scen": "alarm", "item": "Grease fire on the stove", "said": "ALARM SOUNDS", "real": "There is a fire", "predPos": true, "actPos": true, "round": 1, "label": "TP", "short": "grease fire"}, {"id": "B", "key": "a2", "scen": "alarm", "item": "Quiet night at home", "said": "ALARM STAYS SILENT", "real": "There is no fire", "predPos": false, "actPos": false, "round": 1, "label": "TN", "short": "quiet night"}, {"id": "C", "key": "f4", "scen": "fraud", "item": "Stolen card used to buy gift cards", "said": "APPROVED", "real": "It is fraud", "predPos": false, "actPos": true, "round": 1, "label": "FN", "short": "gift-card theft"}, {"id": "D", "key": "f3", "scen": "fraud", "item": "Cardholder’s own plane ticket, bought abroad", "said": "FLAGGED as fraud", "real": "It is legitimate", "predPos": true, "actPos": false, "round": 1, "label": "FP", "short": "own plane ticket"}, {"id": "E", "key": "a4", "scen": "alarm", "item": "Fire smoldering inside a wall", "said": "ALARM STAYS SILENT", "real": "There is a fire", "predPos": false, "actPos": true, "round": 2, "label": "FN", "short": "fire in the wall"}, {"id": "F", "key": "s1", "scen": "spam", "item": "Email: “WIN a free cruise — click now!”", "said": "SPAM", "real": "It really is spam", "predPos": true, "actPos": true, "round": 1, "label": "TP", "short": "cruise spam"}, {"id": "G", "key": "t3", "scen": "strep", "item": "Healthy patient with a mild cold", "said": "Test result: POSITIVE", "real": "The patient has no strep", "predPos": true, "actPos": false, "round": 2, "label": "FP", "short": "healthy patient (cold), test +"}, {"id": "H", "key": "f2", "scen": "fraud", "item": "$37 weekly grocery run", "said": "APPROVED", "real": "It is legitimate", "predPos": false, "actPos": false, "round": 2, "label": "TN", "short": "$37 groceries"}, {"id": "I", "key": "t1", "scen": "strep", "item": "Patient with a sore throat who has strep", "said": "Test result: POSITIVE", "real": "The patient has strep", "predPos": true, "actPos": true, "round": 2, "label": "TP", "short": "sick patient, test +"}, {"id": "J", "key": "t2", "scen": "strep", "item": "Healthy patient, routine visit", "said": "Test result: NEGATIVE", "real": "The patient has no strep", "predPos": false, "actPos": false, "round": 1, "label": "TN", "short": "healthy patient, test −"}, {"id": "K", "key": "a3", "scen": "alarm", "item": "Steam from a hot shower", "said": "ALARM SOUNDS", "real": "There is no fire", "predPos": true, "actPos": false, "round": 2, "label": "FP", "short": "shower steam"}, {"id": "L", "key": "s2", "scen": "spam", "item": "Email: a coworker asking about lunch", "said": "NOT SPAM", "real": "It is not spam", "predPos": false, "actPos": false, "round": 2, "label": "TN", "short": "lunch email"}, {"id": "M", "key": "t4", "scen": "strep", "item": "Patient with a sore throat who has strep", "said": "Test result: NEGATIVE", "real": "The patient has strep", "predPos": false, "actPos": true, "round": 1, "label": "FN", "short": "sick patient, test −"}, {"id": "N", "key": "s4", "scen": "spam", "item": "Email: “Your bank account is locked — log in here”", "said": "NOT SPAM", "real": "It really is spam (phishing)", "predPos": false, "actPos": true, "round": 2, "label": "FN", "short": "phishing email"}, {"id": "O", "key": "s3", "scen": "spam", "item": "Email: your professor’s assignment reminder", "said": "SPAM", "real": "It is not spam", "predPos": true, "actPos": false, "round": 1, "label": "FP", "short": "professor's email"}, {"id": "P", "key": "f1", "scen": "fraud", "item": "$2,400 electronics order on a stolen card", "said": "FLAGGED as fraud", "real": "It is fraud", "predPos": true, "actPos": true, "round": 2, "label": "TP", "short": "stolen card, $2,400"}];
+const TP_NAMES = {TP:"True Positive", TN:"True Negative", FP:"False Positive", FN:"False Negative"};
+const TP_EXPLAIN = {
+  TP:"The model said POSITIVE and it was right. It found what it was hunting for.",
+  TN:"The model said NEGATIVE and it was right. It correctly left the item alone.",
+  FP:"The model said POSITIVE but it was wrong. A false alarm.",
+  FN:"The model said NEGATIVE but it was wrong. A miss: it let the real thing through."
+};
+const tpByKey = k => TP_CARDS.find(c => c.key === k);
+const tpById = id => TP_CARDS.find(c => c.id === id);
+const TP_R1 = TP_CARDS.filter(c => c.round === 1).sort((a,b)=>a.id.localeCompare(b.id));
+const TP_R2 = TP_CARDS.filter(c => c.round === 2).sort((a,b)=>a.id.localeCompare(b.id));
+
+let r1 = {i:0, step:"q1", misses:0, cleanCards:0, finished:false, fb:"", fbClass:"", q1pick:null, q2pick:null, q1ok:false};
+let r2 = {placed:{}, selected:null, fb:"", fbClass:"", shake:null, mistakes:0};
+const TP_FLIP = [
+  {key:"s3", q:"The spam team now says NOT SPAM is the positive class. Your professor's reminder email: the filter said SPAM, and the email was not spam. What is the new label?", ans:"FN",
+   why:"Now the positive class is “not spam.” The filter said SPAM, which is the NEGATIVE class, so it predicted negative. Reality was not spam, which is positive. The model was wrong, so it is a False Negative. (It used to be a False Positive.)"},
+  {key:"s1", q:"Same flip (positive = NOT spam). The “WIN a free cruise” email: the filter said SPAM and it really was spam. What is the new label?", ans:"TN",
+   why:"The filter said SPAM = predicted negative, and reality was spam = actual negative. It was right, so it is a True Negative. (It used to be a True Positive.)"},
+  {key:"s4", q:"Same flip again. The “Your bank account is locked” email: the filter said NOT SPAM, but it was really spam (phishing). What is the new label?", ans:"FP",
+   why:"The filter said NOT SPAM = predicted positive, but reality was spam = actual negative. It was wrong, so it is a False Positive. (It used to be a False Negative.)"}
+];
+let flipState = TP_FLIP.map(()=>({picked:null, correct:false}));
+const TP_WORSE = [
+  {scen:"spam",  fp:"A real email (your professor’s reminder) lands in the spam folder.", fn:"A spam or phishing email reaches your inbox.", ans:null,
+   note:"Both answers can be defended. For FP: you could miss something important and never know. For FN: a phishing email that gets through can do real harm. The answer depends on how costly each mistake is to <i>you</i>."},
+  {scen:"strep", fp:"A healthy patient gets an unneeded follow-up test or antibiotics.", fn:"A sick patient is told “no strep” and sent home untreated.", ans:"FN",
+   note:"Usually FN is worse: an untreated infection can spread or cause complications, while a false positive usually just means a second test. (A doctor worried about antibiotic overuse might weigh FP more, so it is a judgment about costs.)"},
+  {scen:"alarm", fp:"The alarm goes off for shower steam. Annoying, but nobody is hurt.", fn:"A real fire starts and the alarm stays silent.", ans:"FN",
+   note:"FN is clearly worse here: a missed fire can cost lives. This is why smoke alarms are built to be oversensitive and accept lots of false alarms."},
+  {scen:"fraud", fp:"Your own legitimate purchase is blocked at the register.", fn:"A thief’s purchase goes through and the bank and customer lose money.", ans:null,
+   note:"Both can be defended. FN loses money and hurts the customer; FP blocks legitimate buying and frustrates the customer, who may switch banks. The right balance depends on what each mistake costs."}
+];
+let worseState = TP_WORSE.map(()=>({picked:null, reason:""}));
+
+function tpMount(html){
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="panel tp">' + html + '</div>';
+  return app;
+}
+function rerender(){ STAGES[current].render(); }   // re-render the current stage without scrolling
+
+function tpCaseHTML(c){
+  const s = TP_SCEN[c.scen];
+  return `<div class="case">
+    <div class="scen">${s.title}</div><div class="pos">Hunting for (the POSITIVE class): <b>${s.pos}</b></div>
+    <div class="tag">THE CASE</div><div>${c.item}</div>
+    <div class="tag">THE MODEL SAID</div><div class="said">${c.said}</div>
+    <div class="tag">IN REALITY</div><div class="real">${c.real}</div>
+  </div>`;
+}
+
+/* ---- Stage: the two questions ---- */
+function renderTPIntro(){
+  tpMount(`<h2>Four Labels, Two Questions</h2>
+  <p class="lede">A classifier makes predictions, and each prediction is either right or wrong. <b>TP, TN, FP, FN</b> are the four names for the combinations. You don't need to memorize them: answer these two questions about any case and the name falls out.</p>
+  <div class="row" style="align-items:stretch">
+    <div class="qbox" style="flex:1;min-width:230px;background:#eef4fb"><div class="q" style="color:#2b6cb0">Question 1</div>What did the <b>MODEL</b> say?<br><br>The thing we are hunting for &rarr; <b>Positive</b><br>The other thing &rarr; <b>Negative</b><br><span style="color:#5b6472">This is the <b>second word</b>.</span></div>
+    <div class="qbox" style="flex:1;min-width:230px;background:#fff8e8"><div class="q" style="color:#8a6100">Question 2</div>Was the model <b>RIGHT</b>?<br><br>Matches reality &rarr; <b>True</b><br>Doesn't match &rarr; <b>False</b><br><span style="color:#5b6472">This is the <b>first word</b>.</span></div>
+  </div>
+  <div class="callout"><strong>Example:</strong> the smoke alarm sounds, but it was only shower steam. Q1: it said “fire” &rarr; <b>Positive</b>. Q2: there was no fire, so it was wrong &rarr; <b>False</b>. Together: <b>False Positive</b>.</div>
+  <div class="callout warm"><strong>“Positive” does not mean “good.”</strong> The positive class is simply the thing the model is hunting for: spam, an illness, a fire, fraud. A positive strep test is bad news for the patient, but it is still “positive.” Every case tells you what the positive class is.</div>`);
+}
+
+/* ---- Stage: practice (two questions per case) ---- */
+function renderTPPractice(){
+  if(r1.finished){
+    tpMount(`<h2>Practice complete</h2><p class="lede">You got <b>${r1.cleanCards} of ${TP_R1.length}</b> cases with no wrong tries. Mistakes here are normal: the point was to practice the two questions.</p>
+    <div class="callout"><strong>Remember:</strong> Q1 gives the second word (Positive/Negative). Q2 gives the first word (True/False). Click <b>Next</b> to place cases on the matrix.</div>`);
+    return;
+  }
+  const c = TP_R1[r1.i], s = TP_SCEN[c.scen];
+  let h = `<h2>Practice · Name the outcome (${r1.i+1} of ${TP_R1.length})</h2>
+  <p class="lede">Answer Q1 first, then Q2. Wrong answers get a hint, and you can try again.</p>${tpCaseHTML(c)}`;
+  h += `<div class="qbox"><div class="q">Q1. What did the model say?</div>
+    <div class="sub">Look only at “the model said.” Did it say the POSITIVE thing (${s.pos}) or the NEGATIVE thing (${s.neg})?</div><div class="opts">`;
+  ["Positive","Negative"].forEach(o=>{
+    let cls="pick"; if(r1.q1pick===o) cls += (r1.q1ok?" correct":" incorrect");
+    h+=`<button class="${cls}" data-q1="${o}" ${r1.q1ok?"disabled":""}>${o}</button>`;
+  });
+  h+=`</div>`;
+  if(r1.step==="q1") h+=`<div class="fb ${r1.fbClass}">${r1.fb}</div>`;
+  h+=`</div>`;
+  if(r1.step!=="q1"){
+    h+=`<div class="qbox"><div class="q">Q2. Was the model right?</div><div class="sub">Compare what it said with what was really true.</div><div class="opts">`;
+    ["Yes (True)","No (False)"].forEach(o=>{
+      let cls="pick"; if(r1.q2pick===o) cls+=(r1.step==="done"?" correct":" incorrect");
+      h+=`<button class="${cls}" data-q2="${o}" ${r1.step==="done"?"disabled":""}>${o}</button>`;
+    });
+    h+=`</div>`;
+    if(r1.step==="q2") h+=`<div class="fb ${r1.fbClass}">${r1.fb}</div>`;
+    h+=`</div>`;
+  }
+  if(r1.step==="done"){
+    const lab=c.label, tf=(c.predPos===c.actPos)?"True":"False", pn=c.predPos?"Positive":"Negative";
+    h+=`<div class="result ${lab.toLowerCase()}"><div class="eq"><span>${tf}</span> + <span>${pn}</span> = <span>${lab}</span></div>
+      <div class="big">${TP_NAMES[lab]}</div><div style="margin-top:6px">${TP_EXPLAIN[lab]}</div></div>
+      <div class="row"><button class="btn-nav" id="r1next">${r1.i<TP_R1.length-1?"Next case &rarr;":"Finish practice"}</button></div>`;
+  }
+  const app = tpMount(h);
+  app.querySelectorAll("[data-q1]").forEach(b=>b.onclick=()=>{
+    const pick=b.dataset.q1, ok=(pick==="Positive")===c.predPos;
+    r1.q1pick=pick;
+    if(ok){r1.q1ok=true; r1.step="q2"; r1.fb=""; r1.fbClass="";}
+    else {r1.misses++; r1.fbClass="wrong"; r1.fb=`Not quite. The model said “${c.said}”. Is that the thing we are hunting for (${s.pos}), or the other thing (${s.neg})?`;}
+    rerender();
+  });
+  app.querySelectorAll("[data-q2]").forEach(b=>b.onclick=()=>{
+    const pick=b.dataset.q2, right=pick.startsWith("Yes"), ok=right===(c.predPos===c.actPos);
+    r1.q2pick=pick;
+    if(ok){r1.step="done"; r1.fb=""; if(r1.misses===0) r1.cleanCards++;}
+    else {r1.misses++; r1.fbClass="wrong"; r1.fb=`Not quite. The model said “${c.said}” and reality was “${c.real}”. Do those match?`;}
+    rerender();
+  });
+  const nx=document.getElementById("r1next");
+  if(nx) nx.onclick=()=>{
+    if(r1.i<TP_R1.length-1){r1.i++; r1.step="q1"; r1.misses=0; r1.fb=""; r1.fbClass=""; r1.q1pick=null; r1.q2pick=null; r1.q1ok=false;}
+    else {r1.finished=true;}
+    rerender();
+  };
+}
+
+/* ---- Stage: sort onto the matrix ---- */
+function renderTPSort(){
+  const pile = TP_R2.filter(c=>!(c.id in r2.placed));
+  let h=`<h2>Sort the cases onto the matrix</h2>
+  <p class="lede">Click a case below, then click the cell where it belongs. <b>Columns</b> = what the model said. <b>Rows</b> = what was really true.</p>
+  <div class="pile">`;
+  pile.forEach(c=>{
+    h+=`<div class="chip ${r2.selected===c.id?"sel":""}" data-chip="${c.id}"><b>${TP_SCEN[c.scen].title}</b> (hunting: ${TP_SCEN[c.scen].pos})<br>${c.item}<br>Model: ${c.said}<br>Reality: ${c.real}</div>`;
+  });
+  if(pile.length===0) h+=`<div style="color:#1e6b3a;font-weight:700">All cases placed.</div>`;
+  h+=`</div>`;
+  const cells=[{r:true,c:true,label:"TP"},{r:true,c:false,label:"FN"},{r:false,c:true,label:"FP"},{r:false,c:false,label:"TN"}];
+  h+=`<div class="mx"><div></div><div class="hd">MODEL SAID<br>NEGATIVE (0)</div><div class="hd">MODEL SAID<br>POSITIVE (1)</div>`;
+  [false,true].forEach(rowPos=>{
+    h+=`<div class="hd">REALITY<br>${rowPos?"POSITIVE (1)":"NEGATIVE (0)"}</div>`;
+    [false,true].forEach(colPos=>{
+      const cell=cells.find(x=>x.r===rowPos&&x.c===colPos);
+      const here=TP_R2.filter(c=>r2.placed[c.id]===cell.label);
+      const filled=here.length>0;
+      h+=`<div class="cell ${filled?"filled "+cell.label.toLowerCase():""} ${r2.shake===cell.label?"shake":""}" data-cell="${cell.label}" data-row="${rowPos}" data-col="${colPos}">
+        <div class="nm">${filled?cell.label+" · "+TP_NAMES[cell.label]:""}</div>${here.map(c=>`<span class="placed">${c.short}</span>`).join("")}</div>`;
+    });
+  });
+  h+=`</div><div class="fb ${r2.fbClass}" style="text-align:center;margin-top:12px">${r2.fb}</div>`;
+  if(Object.keys(r2.placed).length===TP_R2.length){
+    h+=`<div class="callout"><strong>Look at the diagonals.</strong> TN and TP (top-left and bottom-right) are the two cells where the model was <b>right</b>. FP and FN are the two <b>mistakes</b>. FP is a false alarm; FN is a miss.</div>
+    <div class="callout warm"><strong>About this layout:</strong> there is no single standard. This is the scikit-learn layout we use in this course: rows = actual, columns = predicted, classes in the order 0 then 1 (positive = 1), so <code>confusion_matrix</code> gives <code>[[TN, FP], [FN, TP]]</code>. Some textbooks put TP in the top-left instead, so always check the axis labels before you trust a corner.</div>`;
+  }
+  const app = tpMount(h);
+  app.querySelectorAll("[data-chip]").forEach(ch=>ch.onclick=()=>{r2.selected=ch.dataset.chip; r2.fb=""; r2.fbClass=""; r2.shake=null; rerender();});
+  app.querySelectorAll("[data-cell]").forEach(ce=>ce.onclick=()=>{
+    if(!r2.selected){r2.fb="Click a case first, then a cell."; r2.fbClass="wrong"; rerender(); return;}
+    const c=tpById(r2.selected), lab=ce.dataset.cell;
+    if(lab===c.label){r2.placed[c.id]=lab; r2.selected=null; r2.shake=null; r2.fb=`Correct: that case is a ${TP_NAMES[lab]}.`; r2.fbClass="right";}
+    else{
+      r2.mistakes++; r2.shake=lab; r2.fbClass="wrong";
+      const colOk=(ce.dataset.col==="true")===c.predPos, rowOk=(ce.dataset.row==="true")===c.actPos;
+      r2.fb = !colOk ? "Check the column: what did the MODEL say, positive or negative?" : "Check the row: what was really TRUE, positive or negative?";
+      if(!colOk && !rowOk) r2.fb="Both the row and the column are off. Redo Q1 (what the model said) for the column and look at reality for the row.";
+    }
+    rerender();
+  });
+}
+
+/* ---- Stage: flip the positive class ---- */
+function renderTPFlip(){
+  let h=`<h2>Flip the positive class</h2>
+  <p class="lede">Which class counts as “positive” is a choice. Suppose the spam team decides to hunt for <b>good email</b>: <b>NOT SPAM is now the positive class</b>. The emails and the filter do not change. Does the label?</p>`;
+  TP_FLIP.forEach((q,i)=>{
+    const c=tpByKey(q.key);
+    h+=`<div class="qbox"><div class="q">${i+1}. ${q.q}</div><div class="opts">`;
+    ["TP","TN","FP","FN"].forEach(o=>{
+      let cls="pick"; if(flipState[i].picked===o) cls+=(flipState[i].correct?" correct":" incorrect");
+      h+=`<button class="${cls}" data-flip="${i}" data-o="${o}" ${flipState[i].correct?"disabled":""}>${o}</button>`;
+    });
+    h+=`</div><div class="fb ${flipState[i].correct?"right":flipState[i].picked?"wrong":""}">${flipState[i].correct?q.why:(flipState[i].picked?"Not quite. Redo the two questions with the new positive class: what did the filter say (is that the new positive or negative)? Was it right?":"")}</div></div>`;
+  });
+  if(flipState.every(x=>x.correct)) h+=`<div class="callout"><strong>The pattern:</strong> flipping the positive class swaps TP &harr; TN and FP &harr; FN. “True/False” (was the model right?) never changes. That is why, when we report precision and recall, we always say <i>which class is positive</i>.</div>`;
+  const app = tpMount(h);
+  app.querySelectorAll("[data-flip]").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.flip, o=b.dataset.o; flipState[i].picked=o; flipState[i].correct=(o===TP_FLIP[i].ans); rerender();
+  });
+}
+
+/* ---- Stage: which mistake is worse? ---- */
+function tpWorseDone(i){ return worseState[i].picked && (TP_WORSE[i].ans===null || worseState[i].picked===TP_WORSE[i].ans); }
+function renderTPWorse(){
+  let h=`<h2>Which mistake is worse?</h2>
+  <p class="lede">A <b>false positive (FP)</b> is a false alarm. A <b>false negative (FN)</b> is a miss. They are not equally bad, and which one is worse depends on the problem. For each scenario, pick the mistake you think is worse. Optionally, type a one-sentence reason (nothing is saved).</p>`;
+  TP_WORSE.forEach((w,i)=>{
+    const s=TP_SCEN[w.scen], st=worseState[i];
+    h+=`<div class="qbox"><div class="q">${s.title} <span style="font-weight:500;color:#5b6472">(positive = ${s.pos})</span></div>
+      <div class="sub"><b>FP:</b> ${w.fp}<br><b>FN:</b> ${w.fn}</div><div class="opts">`;
+    ["FP","FN"].forEach(o=>{
+      let cls="pick"; if(st.picked===o) cls += (w.ans===null||o===w.ans)?" correct":" incorrect";
+      h+=`<button class="${cls}" data-w="${i}" data-o="${o}">${o} is worse</button>`;
+    });
+    h+=`</div><textarea data-wr="${i}" rows="2" placeholder="Because..." style="width:100%;margin-top:10px;border-radius:8px;border:1px solid #cfcdc3;padding:8px;font:inherit;font-size:13.5px">${st.reason}</textarea>`;
+    if(st.picked && w.ans!==null && st.picked!==w.ans) h+=`<div class="fb wrong">Think about it again: compare what each mistake costs in this scenario.</div>`;
+    if(tpWorseDone(i)) h+=`<div class="fb right">${w.note}</div>`;
+    h+=`</div>`;
+  });
+  if(TP_WORSE.every((w,i)=>tpWorseDone(i)))
+    h+=`<div class="callout"><strong>Why this matters next:</strong> if misses (FN) are what you fear, you watch <b>recall</b>. If false alarms (FP) are what you fear, you watch <b>precision</b>. Choosing which mistake is worse is choosing which metric to care about most, and it is also why the threshold on the next page matters.</div>`;
+  const app = tpMount(h);
+  app.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ worseState[+b.dataset.w].picked=b.dataset.o; rerender(); });
+  app.querySelectorAll("[data-wr]").forEach(t=>t.oninput=()=>{ worseState[+t.dataset.wr].reason=t.value; });
+}
+
 /* ---------- navigation shell ---------- */
 const STAGES = [
   {label: 'Warm-Up · The Lazy Classifier', render: renderLazy},
+  {label: 'Four Labels · The Two Questions', render: renderTPIntro},
+  {label: 'Practice · Name the Outcome', render: renderTPPractice},
+  {label: 'Sort onto the Matrix', render: renderTPSort},
+  {label: 'Flip the Positive Class', render: renderTPFlip},
   {label: 'Meet the Confusion Matrix', render: renderConfusionMatrix},
+  {label: 'Which Mistake Is Worse?', render: renderTPWorse},
   {label: 'Move the Threshold', render: renderTugOfWar},
   {label: 'Build the ROC Curve', render: renderROC},
   {label: 'Recap', render: renderSummary},
