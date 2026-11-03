@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS383 — Quick Recap Quiz: Lectures 7 and 8</title>
+<style>
+  :root {
+    --ink:#1f2430; --muted:#5b6472; --bg:#fafaf8; --shadow:0 2px 6px rgba(0,0,0,0.08);
+    --good-bg:#e6f6ec; --good-b:#2f9e56; --good-t:#1e6b3a;
+    --bad-bg:#fdecec; --bad-b:#d64545; --bad-t:#a3302f;
+    --warn-bg:#fff6e0; --warn-b:#d69a1f; --warn-t:#8a6100;
+    --accent:#2b6cb0;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:32px 20px 80px; background:var(--bg); color:var(--ink);
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  header { max-width:780px; margin:0 auto 22px; text-align:center; }
+  header h1 { font-size:26px; margin:0 0 8px; }
+  header p { color:var(--muted); font-size:15px; line-height:1.5; margin:4px 0; }
+  #wrap { max-width:720px; margin:0 auto; }
+  #bar { display:flex; gap:5px; margin-bottom:10px; }
+  .seg { flex:1; height:8px; border-radius:4px; background:#e2e0d8; }
+  .seg.right { background:var(--good-b); } .seg.wrong { background:var(--bad-b); } .seg.now { background:#f0b93d; }
+  #meta { display:flex; justify-content:space-between; font-size:14px; color:var(--muted); font-weight:600; margin-bottom:16px; }
+  .panel { background:#fff; border-radius:16px; box-shadow:var(--shadow); padding:26px 26px 22px; }
+  .tag { display:inline-block; font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+         padding:3px 10px; border-radius:20px; background:#eef4fb; color:var(--accent); margin-bottom:12px; }
+  .tag.l8 { background:#fff6e0; color:var(--warn-t); }
+  .q { font-size:19px; font-weight:700; line-height:1.4; margin:0 0 16px; }
+  .opts { display:flex; flex-direction:column; gap:10px; }
+  .opt { text-align:left; font:inherit; font-size:15.5px; line-height:1.4; background:#fff; border:2px solid #dcdad0;
+         border-radius:12px; padding:12px 14px; cursor:pointer; color:var(--ink); transition:border-color .1s, background .1s; }
+  .opt:hover:not(:disabled) { border-color:var(--accent); background:#f5f9fd; }
+  .opt:disabled { cursor:default; }
+  .opt.correct { background:var(--good-bg); border-color:var(--good-b); color:var(--good-t); font-weight:700; }
+  .opt.incorrect { background:var(--bad-bg); border-color:var(--bad-b); color:var(--bad-t); }
+  .opt.dim { opacity:.55; }
+  .why { margin-top:16px; padding:14px 16px; border-radius:10px; font-size:14.5px; line-height:1.55; background:#eef4fb; border-left:4px solid var(--accent); }
+  .why.right { background:var(--good-bg); border-left-color:var(--good-b); }
+  .why.wrong { background:var(--warn-bg); border-left-color:var(--warn-b); }
+  .why b.h { display:block; margin-bottom:4px; }
+  .nextrow { display:flex; justify-content:flex-end; margin-top:16px; }
+  button.go { font:inherit; font-weight:700; font-size:15px; border:none; border-radius:10px; padding:11px 20px; cursor:pointer;
+              background:var(--accent); color:#fff; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+  button.go.alt { background:#e2e0d8; color:var(--ink); }
+  .big { font-size:54px; font-weight:900; text-align:center; margin:4px 0 0; color:var(--accent); }
+  .tier { text-align:center; font-size:19px; font-weight:700; margin:6px 0 4px; }
+  .sub { text-align:center; color:var(--muted); font-size:14.5px; line-height:1.5; margin:0 0 14px; }
+  ul.rev { padding-left:20px; line-height:1.6; font-size:14.5px; margin:8px 0 0; }
+  .teaser { margin-top:18px; padding:14px 16px; border-radius:10px; background:var(--warn-bg); border-left:4px solid var(--warn-b); font-size:14.5px; line-height:1.55; }
+  .center { text-align:center; margin-top:18px; }
+  footer { max-width:780px; margin:30px auto 0; text-align:center; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Quick Recap: Lectures 7 and 8</h1>
+  <p>10 multiple-choice questions on regression and your first classifiers. No pressure, no grades: just a warm-up before Lecture 9. About 5 minutes.</p>
+</header>
+<div id="wrap">
+  <div id="bar"></div>
+  <div id="meta"><span id="progress"></span><span id="score"></span></div>
+  <div id="app"></div>
+</div>
+<footer>CS383 Fall 2026 · Nothing is saved or sent anywhere.</footer>
+
+<script>
+const QUESTIONS = [
+  { lec:7, topic:"Regression vs. classification",
+    q:"Which of these is a regression problem?",
+    opts:["Will this restaurant get an A, B, or C grade?",
+          "How many hours will this 311 complaint take to resolve?",
+          "Is this email spam or not spam?",
+          "Which borough did this complaint come from?"], ans:1,
+    why:"Regression predicts a <b>number</b> (hours). The other three each pick a category, which is classification." },
+
+  { lec:7, topic:"Residuals",
+    q:"In a regression model, what is a residual?",
+    opts:["How far off the model's prediction was for one data point (actual minus predicted)",
+          "The slope of the best-fit line",
+          "The rows we hold out for testing",
+          "The average of all the target values"], ans:0,
+    why:"A residual is the leftover error for one point. Least squares picks the line that makes the squared residuals add up to as little as possible." },
+
+  { lec:7, topic:"What R² means",
+    q:"A regression model has R² = 0.80. What does that mean?",
+    opts:["It is right 80% of the time",
+          "It explains about 80% of the variation in the target, compared with always guessing the mean",
+          "80% of the rows were used for training",
+          "Its average error is 0.80"], ans:1,
+    why:"R² is <b>not</b> accuracy. It says how much of the target's ups and downs the model explains compared with the lazy \"always predict the average\" guess." },
+
+  { lec:7, topic:"Target leakage",
+    q:"A model predicting a restaurant's inspection score gets a near-perfect R². Then you notice one feature is the letter grade, and the grade is computed from the score itself. What's going on?",
+    opts:["Great feature engineering!",
+          "Underfitting",
+          "Target leakage: the feature was built from the answer",
+          "The model just needs more data"], ans:2,
+    why:"If a feature comes from the very thing you are predicting, the model is basically peeking at the answer key. Ask: could I have known this <i>before</i> the outcome?" },
+
+  { lec:7, topic:"Train/test split",
+    q:"Why do we hold out a test set?",
+    opts:["To make training faster",
+          "To give the model extra practice",
+          "To see how the model does on data it has never seen",
+          "To get a higher R²"], ans:2,
+    why:"The test set is the honest exam. A model that only looks good on the data it trained on may have just memorized it." },
+
+  { lec:8, topic:"Sigmoid and probabilities",
+    q:"Logistic regression squeezes its linear score through the sigmoid function. Why?",
+    opts:["To make the line straighter",
+          "So the output lands between 0 and 1 and can be read as a probability",
+          "To make training faster",
+          "To turn categories into numbers"], ans:1,
+    why:"A plain line can go below 0 or above 1, which makes no sense for a probability. The sigmoid squashes any score into the 0 to 1 range." },
+
+  { lec:8, topic:"Probability, threshold, class",
+    q:"<code>predict_proba</code> says a restaurant has a 0.62 chance of being \"critical.\" With the default 0.5 threshold, what does <code>.predict()</code> return?",
+    opts:["Critical (class 1)",
+          "Not critical (class 0)",
+          "0.62",
+          "It depends on k"], ans:0,
+    why:"The model gives a <b>probability</b>; the <b>threshold</b> turns it into a decision. 0.62 clears the 0.5 bar, so the predicted class is 1. (Lecture 9 is all about why that 0.5 is a choice, not a law.)" },
+
+  { lec:8, topic:"How k-NN works",
+    q:"How does k-NN with k = 5 classify a new point?",
+    opts:["It draws the best straight line through the data",
+          "It averages every point in the dataset",
+          "It fits a sigmoid curve to the 5 nearest points",
+          "It finds the 5 nearest training points and takes a majority vote"], ans:3,
+    why:"k-NN has no real training step: it stores the data, then lets the closest neighbors vote." },
+
+  { lec:8, topic:"Scaling for k-NN",
+    q:"Why should you scale your features before using k-NN?",
+    opts:["Otherwise features with big numbers (like income) swamp features with small numbers (like age) in the distance calculation",
+          "k-NN only works with values between 0 and 1",
+          "Scaling makes the sigmoid work",
+          "It makes k bigger"], ans:0,
+    why:"k-NN is all about distance. If one feature is measured in thousands and another in tens, the big one decides everything unless you put them on the same scale." },
+
+  { lec:8, topic:"Majority-class baseline",
+    q:"Your classifier scores 92% accuracy, but 90% of the data is in the majority class. How impressed should you be?",
+    opts:["Very: 92% is a great score",
+          "Only if you also use k = 1",
+          "Anything over 90% is automatically good",
+          "Not very: always guessing the majority class already gets 90%"], ans:3,
+    why:"The majority-class baseline is the bar to clear. 92% vs. a 90% do-nothing baseline is a tiny gain, and that is exactly the puzzle Lecture 9 digs into." }
+];
+
+const app = document.getElementById("app");
+let order, idx, results, streak, best, answered;
+
+function shuffle(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]];} return b; }
+
+function start(){
+  order = QUESTIONS.map((q,i)=>({q, opts:shuffle(q.opts.map((t,k)=>({t, ok:k===q.ans})))}));
+  idx = 0; results = []; streak = 0; best = 0; answered = false;
+  render();
+}
+function renderBar(){
+  const bar = document.getElementById("bar"); bar.innerHTML = "";
+  order.forEach((_,i)=>{
+    const s = document.createElement("div");
+    s.className = "seg" + (i<results.length ? (results[i] ? " right":" wrong") : (i===idx ? " now" : ""));
+    bar.appendChild(s);
+  });
+  const done = results.length;
+  document.getElementById("progress").textContent = idx<order.length ? `Question ${idx+1} of ${order.length}` : "Finished";
+  const right = results.filter(Boolean).length;
+  document.getElementById("score").textContent = `${right} correct` + (streak>=2 ? ` · streak ${streak}` : "");
+}
+function render(){
+  renderBar();
+  if(idx>=order.length){ renderEnd(); return; }
+  const {q, opts} = order[idx];
+  let h = `<div class="panel"><span class="tag ${q.lec===8?"l8":""}">Lecture ${q.lec} · ${q.topic}</span>
+    <p class="q">${q.q}</p><div class="opts">`;
+  opts.forEach((o,i)=>{ h += `<button class="opt" data-i="${i}">${o.t}</button>`; });
+  h += `</div><div id="fb"></div></div>`;
+  app.innerHTML = h; answered = false;
+  app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>choose(+b.dataset.i));
+}
+const CHEERS = ["Nailed it.","Yes!","Exactly right.","Spot on.","Correct."];
+const OOPS = ["Close, but not quite.","Not this time.","Good guess, wrong one.","Ooh, tricky."];
+function choose(i){
+  if(answered) return; answered = true;
+  const {q, opts} = order[idx];
+  const ok = opts[i].ok;
+  results.push(ok);
+  streak = ok ? streak+1 : 0; best = Math.max(best, streak);
+  app.querySelectorAll(".opt").forEach((b,k)=>{
+    b.disabled = true;
+    if(opts[k].ok) b.classList.add("correct");
+    else if(k===i) b.classList.add("incorrect");
+    else b.classList.add("dim");
+  });
+  const head = ok ? CHEERS[idx%CHEERS.length] : OOPS[idx%OOPS.length];
+  const last = idx===order.length-1;
+  document.getElementById("fb").innerHTML =
+    `<div class="why ${ok?"right":"wrong"}"><b class="h">${head}</b>${q.why}</div>
+     <div class="nextrow"><button class="go" id="nextBtn">${last?"See my results":"Next question"}</button></div>`;
+  document.getElementById("nextBtn").onclick = ()=>{ idx++; render(); window.scrollTo(0,0); };
+  renderBar();
+}
+function renderEnd(){
+  const right = results.filter(Boolean).length;
+  let tier, sub;
+  if(right===10){ tier="Perfect score. Lecture 9 had better watch out."; sub="You have Lectures 7 and 8 down cold."; }
+  else if(right>=8){ tier="Strong work."; sub="A quick look at the topics below and you are set."; }
+  else if(right>=5){ tier="Getting there."; sub="Skim the topics below before class and you will be fine."; }
+  else { tier="Good warm-up: now you know what to review."; sub="Reread the topics below. That is what this quiz is for."; }
+  const missed = order.filter((_,i)=>!results[i]).map(o=>`<li>Lecture ${o.q.lec}: ${o.q.topic}</li>`).join("");
+  app.innerHTML = `<div class="panel">
+    <div class="big">${right} / ${order.length}</div>
+    <div class="tier">${tier}</div>
+    <p class="sub">${sub}${best>=3?` Your longest streak was ${best} in a row.`:""}</p>
+    ${missed ? `<b>Topics to revisit:</b><ul class="rev">${missed}</ul>` : ""}
+    <div class="teaser"><b>Up next, Lecture 9:</b> remember the last question? A model with 92% accuracy that barely beats a "do-nothing" baseline. Lecture 9 is about what to measure when accuracy is not enough.</div>
+    <div class="center"><button class="go alt" id="again">Try again</button></div>
+  </div>`;
+  document.getElementById("again").onclick = ()=>{ start(); window.scrollTo(0,0); };
+  renderBar();
+}
+start();
+</script>
+</body>
+</html>
