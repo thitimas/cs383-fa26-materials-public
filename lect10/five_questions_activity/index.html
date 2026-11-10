@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5 Questions: Guess the Famous Person</title>
+<style>
+  :root {
+    --navy: #14213d;
+    --blue: #1d4ed8;
+    --blue-dark: #1e3a8a;
+    --bg: #f3f5fa;
+    --card: #ffffff;
+    --border: #cfd6e6;
+    --text: #111827;
+    --muted: #6b7280;
+    --gold: #f59e0b;
+    --danger: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    background: var(--navy);
+    color: #fff;
+    text-align: center;
+    padding: clamp(10px, 2vh, 22px) 16px clamp(8px, 1.6vh, 18px);
+  }
+  header h1 {
+    margin: 0;
+    font-size: clamp(1.8rem, 4vw, 3.2rem);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  header p {
+    margin: 6px 0 0;
+    font-size: clamp(1.05rem, 1.8vw, 1.6rem);
+    color: #c7d2fe;
+  }
+
+  /* ---------- Status bar ---------- */
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    max-width: 1700px;
+    margin: 14px auto 10px;
+    padding: 0 20px;
+  }
+  .remaining {
+    font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .remaining .num { color: var(--blue); font-size: 1.25em; }
+
+  .qcounter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 6px 14px;
+  }
+  .qlabel { font-size: clamp(1rem, 1.6vw, 1.4rem); font-weight: 600; color: var(--muted); }
+  .qcurrent {
+    font-size: clamp(2rem, 3.6vw, 3rem);
+    font-weight: 800;
+    color: var(--navy);
+    min-width: 1.6ch;
+    text-align: center;
+    line-height: 1;
+  }
+  .qcurrent.limit { color: var(--danger); }
+  .qtotal { font-size: clamp(1.1rem, 1.8vw, 1.6rem); font-weight: 600; color: var(--muted); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  button { font-family: inherit; }
+  .btn {
+    font-size: clamp(1rem, 1.5vw, 1.3rem);
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 2px solid var(--blue);
+    background: var(--blue);
+    color: #fff;
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { background: var(--blue-dark); border-color: var(--blue-dark); }
+  .btn.secondary { background: #fff; color: var(--blue); }
+  .btn.secondary:hover:not(:disabled) { background: #e8eefc; }
+  .btn.danger { background: #fff; color: var(--danger); border-color: var(--danger); }
+  .btn.danger:hover:not(:disabled) { background: #fdecec; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.round {
+    width: 2.6rem; height: 2.6rem; padding: 0; font-size: 1.6rem; line-height: 1;
+    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  }
+  button:focus-visible { outline: 4px solid #f59e0b; outline-offset: 2px; }
+
+  /* ---------- Grid ---------- */
+  main { max-width: 1700px; margin: 0 auto; padding: 0 20px 20px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: clamp(8px, 1.2vw, 16px);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  @media (max-width: 1000px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 12px;
+    cursor: pointer;
+    min-height: clamp(68px, 10.5vh, 104px);
+    color: var(--text);
+  }
+  .card:hover { border-color: var(--blue); }
+  .avatar {
+    flex: 0 0 auto;
+    width: clamp(46px, 7.5vh, 76px);
+    height: clamp(46px, 7.5vh, 76px);
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(1rem, 2.4vh, 1.6rem);
+    letter-spacing: 0.5px;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .name {
+    font-size: clamp(1.05rem, 1.55vw, 1.55rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* eliminated */
+  .card.out { background: #e9ebf0; border-color: #d3d7e0; }
+  .card.out .avatar { filter: grayscale(1); opacity: 0.45; }
+  .card.out .name { color: #7b8190; text-decoration: line-through; text-decoration-thickness: 2px; }
+
+  /* revealed answer */
+  .card.answer {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.35);
+    background: #fffbeb;
+  }
+  .card.answer .name::after {
+    content: " \2605";
+    color: var(--gold);
+  }
+
+  /* ---------- Teacher panel ---------- */
+  .teacher { max-width: 1700px; margin: 6px auto 30px; padding: 0 20px; }
+  .teacher-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .teacher-toggle:hover { color: var(--text); border-color: var(--muted); }
+  .teacher-panel {
+    margin-top: 10px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+  }
+  .teacher-panel[hidden] { display: none; }
+  .teacher-panel h2 { margin: 0 0 8px; font-size: 1.1rem; color: var(--navy); }
+  .teacher-panel dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+  .teacher-panel dt { font-weight: 700; color: var(--blue-dark); }
+  .teacher-panel dd { margin: 0; }
+  .teacher-panel .tip { margin: 12px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>5 Questions: Guess the Famous Person</h1>
+  <p>Can you identify the person in 5 questions?</p>
+</header>
+
+<section class="bar" aria-label="Game status and controls">
+  <div class="remaining" id="remaining" aria-live="polite">
+    <span class="num" id="remainingNum">30</span> <span id="remainingText">candidates remaining</span>
+  </div>
+
+  <div class="qcounter" role="group" aria-label="Question counter">
+    <button class="btn secondary round" id="qMinus" type="button" aria-label="Subtract one question">&minus;</button>
+    <div>
+      <div class="qlabel">Questions asked: <span id="qlabelNum">0</span> / 5</div>
+    </div>
+    <span class="qcurrent" id="qCurrent" aria-hidden="true">0</span>
+    <span class="qtotal" aria-hidden="true">/ 5</span>
+    <button class="btn secondary round" id="qPlus" type="button" aria-label="Add one question">+</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn secondary" id="undoBtn" type="button" disabled>Undo</button>
+    <button class="btn" id="revealBtn" type="button" disabled>Reveal Answer</button>
+    <button class="btn danger" id="resetBtn" type="button">Reset</button>
+  </div>
+</section>
+
+<main>
+  <ul class="grid" id="grid" aria-label="Candidates. Activate a card to eliminate or restore that person."></ul>
+</main>
+
+<section class="teacher" aria-label="Teacher mode">
+  <button class="teacher-toggle" id="teacherToggle" type="button" aria-expanded="false" aria-controls="teacherPanel">
+    Teacher mode
+  </button>
+  <div class="teacher-panel" id="teacherPanel" hidden>
+    <h2>Categories (teacher only)</h2>
+    <dl>
+      <dt>Music</dt><dd>Taylor Swift, Beyoncé, Michael Jackson, Ariana Grande, Rihanna, Drake</dd>
+      <dt>Science</dt><dd>Albert Einstein, Isaac Newton, Marie Curie, Stephen Hawking, Charles Darwin, Ada Lovelace</dd>
+      <dt>Technology</dt><dd>Steve Jobs, Bill Gates, Elon Musk, Mark Zuckerberg, Jeff Bezos, Sundar Pichai</dd>
+      <dt>Sports</dt><dd>LeBron James, Cristiano Ronaldo, Lionel Messi, Serena Williams, Simone Biles, Michael Jordan</dd>
+      <dt>Other public figures</dt><dd>Barack Obama, Abraham Lincoln, Martin Luther King Jr., Leonardo da Vinci, Oprah Winfrey, MrBeast</dd>
+    </dl>
+    <p class="tip">Keyboard: Tab to a card and press Enter or Space to eliminate or restore it. Press + or &minus; to change the question count, and Ctrl/Cmd+Z to undo.</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------
+  // Data: exactly 30 people, in the required order.
+  // image = optional photo in the local images/ folder (see images/README.txt).
+  // If the file is missing, an initials badge is shown instead.
+  // ------------------------------------------------------------------
+  var PEOPLE = [
+    { name: "Taylor Swift",          initials: "TS",  image: "taylor-swift" },
+    { name: "Beyoncé",               initials: "B",   image: "beyonce" },
+    { name: "Michael Jackson",       initials: "MJ",  image: "michael-jackson" },
+    { name: "Ariana Grande",         initials: "AG",  image: "ariana-grande" },
+    { name: "Rihanna",               initials: "R",   image: "rihanna" },
+    { name: "Drake",                 initials: "D",   image: "drake" },
+    { name: "Albert Einstein",       initials: "AE",  image: "albert-einstein" },
+    { name: "Isaac Newton",          initials: "IN",  image: "isaac-newton" },
+    { name: "Marie Curie",           initials: "MC",  image: "marie-curie" },
+    { name: "Stephen Hawking",       initials: "SH",  image: "stephen-hawking" },
+    { name: "Charles Darwin",        initials: "CD",  image: "charles-darwin" },
+    { name: "Ada Lovelace",          initials: "AL",  image: "ada-lovelace" },
+    { name: "Steve Jobs",            initials: "SJ",  image: "steve-jobs" },
+    { name: "Bill Gates",            initials: "BG",  image: "bill-gates" },
+    { name: "Elon Musk",             initials: "EM",  image: "elon-musk" },
+    { name: "Mark Zuckerberg",       initials: "MZ",  image: "mark-zuckerberg" },
+    { name: "Jeff Bezos",            initials: "JB",  image: "jeff-bezos" },
+    { name: "Sundar Pichai",         initials: "SP",  image: "sundar-pichai" },
+    { name: "LeBron James",          initials: "LJ",  image: "lebron-james" },
+    { name: "Cristiano Ronaldo",     initials: "CR",  image: "cristiano-ronaldo" },
+    { name: "Lionel Messi",          initials: "LM",  image: "lionel-messi" },
+    { name: "Serena Williams",       initials: "SW",  image: "serena-williams" },
+    { name: "Simone Biles",          initials: "SB",  image: "simone-biles" },
+    { name: "Michael Jordan",        initials: "MJ",  image: "michael-jordan" },
+    { name: "Barack Obama",          initials: "BO",  image: "barack-obama" },
+    { name: "Abraham Lincoln",       initials: "AL",  image: "abraham-lincoln" },
+    { name: "Martin Luther King Jr.",initials: "MLK", image: "martin-luther-king-jr" },
+    { name: "Leonardo da Vinci",     initials: "LV",  image: "leonardo-da-vinci" },
+    { name: "Oprah Winfrey",         initials: "OW",  image: "oprah-winfrey" },
+    { name: "MrBeast",               initials: "MB",  image: "mrbeast" }
+  ];
+
+  var IMAGE_EXTENSIONS = ["jpg", "png", "webp"];   // tried in this order
+  var MAX_QUESTIONS = 5;
+
+  // Muted palette for initials badges. The color is assigned with a
+  // scrambled index so it does not hint at a person's category.
+  var COLORS = ["#1d4ed8", "#0f766e", "#7c3aed", "#b45309", "#be123c", "#475569", "#15803d", "#9333ea"];
+  function colorFor(i) { return COLORS[(i * 5 + 3) % COLORS.length]; }
+
+  // ------------------------------------------------------------------
+  // State
+  // ------------------------------------------------------------------
+  var eliminated = PEOPLE.map(function () { return false; });  // by index
+  var undoStack = [];     // indexes of cards toggled, most recent last
+  var questions = 0;
+  var revealed = false;
+
+  // ------------------------------------------------------------------
+  // Elements
+  // ------------------------------------------------------------------
+  var gridEl = document.getElementById("grid");
+  var remainingNum = document.getElementById("remainingNum");
+  var remainingText = document.getElementById("remainingText");
+  var qCurrent = document.getElementById("qCurrent");
+  var qlabelNum = document.getElementById("qlabelNum");
+  var qPlus = document.getElementById("qPlus");
+  var qMinus = document.getElementById("qMinus");
+  var undoBtn = document.getElementById("undoBtn");
+  var revealBtn = document.getElementById("revealBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var teacherToggle = document.getElementById("teacherToggle");
+  var teacherPanel = document.getElementById("teacherPanel");
+  var cardEls = [];
+
+  // ------------------------------------------------------------------
+  // Build the grid once; later updates only change classes and text.
+  // ------------------------------------------------------------------
+  function buildAvatar(person, index) {
+    var avatar = document.createElement("span");
+    avatar.className = "avatar";
+    avatar.style.background = colorFor(index);
+    avatar.setAttribute("aria-hidden", "true");
+
+    var fallback = document.createElement("span");
+    fallback.textContent = person.initials;
+    avatar.appendChild(fallback);
+
+    // Try a local photo; if none loads, keep the initials badge.
+    var tryIndex = 0;
+    var img = new Image();
+    img.alt = "";
+    img.onload = function () {
+      avatar.textContent = "";
+      avatar.style.background = "#e5e7eb";
+      avatar.appendChild(img);
+    };
+    img.onerror = function () {
+      tryIndex += 1;
+      if (tryIndex < IMAGE_EXTENSIONS.length) {
+        img.src = "images/" + person.image + "." + IMAGE_EXTENSIONS[tryIndex];
+      }
+    };
+    img.src = "images/" + person.image + "." + IMAGE_EXTENSIONS[0];
+    return avatar;
+  }
+
+  function buildGrid() {
+    PEOPLE.forEach(function (person, i) {
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "card";
+      btn.setAttribute("data-index", String(i));
+      btn.appendChild(buildAvatar(person, i));
+      var nameEl = document.createElement("span");
+      nameEl.className = "name";
+      nameEl.textContent = person.name;
+      btn.appendChild(nameEl);
+      btn.addEventListener("click", function () { toggle(i, true); });
+      li.appendChild(btn);
+      gridEl.appendChild(li);
+      cardEls.push(btn);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Actions
+  // ------------------------------------------------------------------
+  function remainingIndexes() {
+    var out = [];
+    for (var i = 0; i < eliminated.length; i++) if (!eliminated[i]) out.push(i);
+    return out;
+  }
+
+  function toggle(i, record) {
+    eliminated[i] = !eliminated[i];
+    if (record) undoStack.push(i);
+    revealed = false;            // any change hides a previously revealed answer
+    render();
+  }
+
+  function undo() {
+    if (!undoStack.length) return;
+    var i = undoStack.pop();
+    eliminated[i] = !eliminated[i];
+    revealed = false;
+    render();
+  }
+
+  function changeQuestions(delta) {
+    questions = Math.max(0, Math.min(MAX_QUESTIONS, questions + delta));
+    render();
+  }
+
+  function reset() {
+    if (!window.confirm("Reset the game? All 30 candidates will be restored and the question counter set to 0.")) return;
+    for (var i = 0; i < eliminated.length; i++) eliminated[i] = false;
+    undoStack = [];
+    questions = 0;
+    revealed = false;
+    render();
+  }
+
+  function toggleReveal() {
+    if (remainingIndexes().length !== 1) return;
+    revealed = !revealed;
+    render();
+  }
+
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
+  function render() {
+    var left = remainingIndexes();
+    var n = left.length;
+
+    remainingNum.textContent = String(n);
+    remainingText.textContent = (n === 1 ? "candidate" : "candidates") + " remaining";
+
+    qCurrent.textContent = String(questions);
+    qlabelNum.textContent = String(questions);
+    qCurrent.classList.toggle("limit", questions >= MAX_QUESTIONS);
+    qMinus.disabled = questions <= 0;
+    qPlus.disabled = questions >= MAX_QUESTIONS;
+
+    undoBtn.disabled = undoStack.length === 0;
+
+    revealBtn.disabled = n !== 1;
+    revealBtn.textContent = (revealed && n === 1) ? "Hide Answer" : "Reveal Answer";
+
+    PEOPLE.forEach(function (person, i) {
+      var el = cardEls[i];
+      var out = eliminated[i];
+      var isAnswer = revealed && n === 1 && !out;
+      el.classList.toggle("out", out);
+      el.classList.toggle("answer", isAnswer);
+      el.setAttribute("aria-pressed", out ? "true" : "false");
+      el.setAttribute("aria-label",
+        person.name + (out ? ", eliminated. Activate to restore."
+                           : (isAnswer ? ", the answer." : ", still a candidate. Activate to eliminate.")));
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Wiring
+  // ------------------------------------------------------------------
+  qPlus.addEventListener("click", function () { changeQuestions(1); });
+  qMinus.addEventListener("click", function () { changeQuestions(-1); });
+  undoBtn.addEventListener("click", undo);
+  revealBtn.addEventListener("click", toggleReveal);
+  resetBtn.addEventListener("click", reset);
+
+  teacherToggle.addEventListener("click", function () {
+    var open = teacherPanel.hasAttribute("hidden");
+    if (open) teacherPanel.removeAttribute("hidden"); else teacherPanel.setAttribute("hidden", "");
+    teacherToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "+" || e.key === "=") { changeQuestions(1); }
+    else if (e.key === "-" || e.key === "_") { changeQuestions(-1); }
+  });
+
+  buildGrid();
+  render();
+})();
+</script>
+</body>
+</html>
