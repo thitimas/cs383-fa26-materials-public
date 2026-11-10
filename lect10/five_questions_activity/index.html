@@ -252,7 +252,7 @@
       <dt>Sports</dt><dd>LeBron James, Cristiano Ronaldo, Lionel Messi, Serena Williams, Simone Biles, Michael Jordan</dd>
       <dt>Other public figures</dt><dd>Barack Obama, Abraham Lincoln, Martin Luther King Jr., Leonardo da Vinci, Oprah Winfrey, MrBeast</dd>
     </dl>
-    <p class="tip">Keyboard: Tab to a card and press Enter or Space to eliminate or restore it. Press + or &minus; to change the question count, and Ctrl/Cmd+Z to undo.</p>
+    <p class="tip">The cards are shuffled each time the page opens and after every Reset. Keyboard: Tab to a card and press Enter or Space to eliminate or restore it. Press + or &minus; to change the question count, and Ctrl/Cmd+Z to undo.</p>
   </div>
 </section>
 
@@ -329,7 +329,8 @@
   var resetBtn = document.getElementById("resetBtn");
   var teacherToggle = document.getElementById("teacherToggle");
   var teacherPanel = document.getElementById("teacherPanel");
-  var cardEls = [];
+  var cardEls = [];   // card buttons, indexed by person
+  var itemEls = [];   // list items, indexed by person (reordered when shuffling)
 
   // ------------------------------------------------------------------
   // Build the grid once; later updates only change classes and text.
@@ -379,7 +380,19 @@
       li.appendChild(btn);
       gridEl.appendChild(li);
       cardEls.push(btn);
+      itemEls.push(li);
     });
+  }
+
+  // Randomly reorder the cards on screen (Fisher-Yates). Game state is stored
+  // by person, so shuffling only moves the cards; it never changes who is out.
+  function shuffleGrid() {
+    var order = PEOPLE.map(function (_, i) { return i; });
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    order.forEach(function (personIndex) { gridEl.appendChild(itemEls[personIndex]); });
   }
 
   // ------------------------------------------------------------------
@@ -417,6 +430,7 @@
     undoStack = [];
     questions = 0;
     revealed = false;
+    shuffleGrid();      // fresh layout for the next round
     render();
   }
 
@@ -484,6 +498,7 @@
   });
 
   buildGrid();
+  shuffleGrid();      // new random layout every time the page is opened
   render();
 })();
 </script>
